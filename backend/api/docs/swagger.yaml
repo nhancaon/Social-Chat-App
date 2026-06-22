@@ -1,0 +1,16 @@
+basePath: /
+host: localhost:5000
+info:
+  contact: {}
+  description: this is  Swagger docs for Social chat API created with golang and fiber
+  title: Fiber Golang Rest API
+  version: "1.0"
+paths: {}
+schemes:
+- http
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
