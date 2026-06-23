@@ -3,6 +3,8 @@ package main
 import (
 	"Server/database"
 	_ "Server/docs"
+	"Server/routes"
+	"log"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -20,6 +22,12 @@ import (
 // @name Authorization
 
 func main() {
+
+	//load env
+	if err := godotenv.Load(); err != nil {
+		log.Fatal("Error loading env", err)
+	}
+
 	database.Connect()
 	app := fiber.New()
 
@@ -38,6 +46,9 @@ func main() {
 	app.Get("/", func(c *fiber.Ctx) error {
 		return c.SendString("Hello, World!")
 	})
+
+	//Setup routes
+	routes.SetupAuthRoutes(app)
 
 	//Server swagger docs
 	app.Get("/swagger/*", swagger.HandlerDefault)

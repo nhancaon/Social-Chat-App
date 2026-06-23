@@ -1,11 +1,74 @@
 basePath: /
+definitions:
+  models.CreateUser:
+    properties:
+      email:
+        type: string
+      firstName:
+        type: string
+      lastName:
+        type: string
+      password:
+        type: string
+    type: object
+  models.UserModel:
+    properties:
+      _id:
+        type: string
+      bio:
+        type: string
+      email:
+        type: string
+      followers:
+        items:
+          type: string
+        type: array
+      following:
+        items:
+          type: string
+        type: array
+      imageUrl:
+        type: string
+      name:
+        type: string
+    required:
+    - email
+    type: object
 host: localhost:5000
 info:
   contact: {}
   description: this is  Swagger docs for Social chat API created with golang and fiber
   title: Fiber Golang Rest API
   version: "1.0"
-paths: {}
+paths:
+  /user/signup:
+    post:
+      consumes:
+      - application/json
+      description: Register an new user by providing email, password, first name,
+        last name
+      parameters:
+      - description: user register details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateUser'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.UserModel'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Register a new user
+      tags:
+      - Authentication
 schemes:
 - http
 securityDefinitions:
