@@ -10,7 +10,6 @@ import (
 func SetupAuthRoutes(app *fiber.App) {
 	// auth
 	app.Post("/user/signup", validation.ValidateUser, controllers.Register)
-	// app.Post("/user/signin", validation.ValidateUser, controllers.Login)
-	// app.Get("/user/refresh", controllers.RefreshUser)
+	app.Post("/user/signin", validation.ValidateUser, controllers.Login)
 
 }

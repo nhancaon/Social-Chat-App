@@ -1,5 +1,25 @@
 basePath: /
 definitions:
+  models.ComnmentPost:
+    properties:
+      value:
+        type: string
+    required:
+    - value
+    type: object
+  models.CreateOrUpdatePost:
+    properties:
+      message:
+        minLength: 5
+        type: string
+      selectedFile:
+        type: string
+      title:
+        type: string
+    required:
+    - message
+    - title
+    type: object
   models.CreateUser:
     properties:
       email:
@@ -9,6 +29,74 @@ definitions:
       lastName:
         type: string
       password:
+        type: string
+    type: object
+  models.LoginUser:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    type: object
+  models.Message:
+    properties:
+      _id:
+        type: string
+      content:
+        type: string
+      createdAt:
+        type: string
+      receiver:
+        type: string
+      sender:
+        type: string
+    type: object
+  models.PostModel:
+    properties:
+      _id:
+        type: string
+      comments:
+        items:
+          type: string
+        type: array
+      createdAt:
+        type: string
+      creator:
+        type: string
+      likes:
+        items:
+          type: string
+        type: array
+      message:
+        type: string
+      name:
+        type: string
+      selectedFile:
+        type: string
+      title:
+        type: string
+    type: object
+  models.SendMessageM:
+    properties:
+      content:
+        minLength: 5
+        type: string
+      receiver:
+        type: string
+      sender:
+        type: string
+    required:
+    - content
+    - receiver
+    - sender
+    type: object
+  models.UpdateUser:
+    properties:
+      bio:
+        type: string
+      imageUrl:
+        type: string
+      name:
         type: string
     type: object
   models.UserModel:
@@ -31,8 +119,12 @@ definitions:
         type: string
       name:
         type: string
+      password:
+        minLength: 5
+        type: string
     required:
     - email
+    - password
     type: object
 host: localhost:5000
 info:
@@ -41,6 +133,582 @@ info:
   title: Fiber Golang Rest API
   version: "1.0"
 paths:
+  /chat/get-user-unreadmsg:
+    get:
+      consumes:
+      - application/json
+      description: Get unread message count & records for user
+      parameters:
+      - description: user id
+        in: query
+        name: userid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get unread message count & records for user
+      tags:
+      - Chat
+  /chat/getmsgsbynums:
+    get:
+      consumes:
+      - application/json
+      description: Get messages between two users by pagination
+      parameters:
+      - description: Starting page num
+        in: query
+        name: from
+        required: true
+        type: integer
+      - description: first user id
+        in: query
+        name: firstuid
+        required: true
+        type: string
+      - description: second user id
+        in: query
+        name: seconduid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.Message'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: get messages by pagination
+      tags:
+      - Chat
+  /chat/mark-msg-asreaded:
+    get:
+      consumes:
+      - application/json
+      description: mark messages as read for user, updates the record to isReaded=true,
+        count=0
+      parameters:
+      - description: main user id
+        in: query
+        name: mainuid
+        required: true
+        type: string
+      - description: other user id
+        in: query
+        name: otheruid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: mark messages as read for user
+      tags:
+      - Chat
+  /chat/sendmessage:
+    post:
+      consumes:
+      - application/json
+      description: SendMessage from one user to another
+      parameters:
+      - description: user SendMessage details
+        in: body
+        name: message
+        required: true
+        schema:
+          $ref: '#/definitions/models.SendMessageM'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.Message'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: send message to friend user
+      tags:
+      - Chat
+  /notification/{userid}:
+    get:
+      consumes:
+      - application/json
+      description: GetUserNotification
+      parameters:
+      - description: User ID
+        in: path
+        name: userid
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user notifications
+      tags:
+      - Notifications
+  /notification/mark-notification-asreaded:
+    get:
+      consumes:
+      - application/json
+      description: MarkNotAsReaded
+      parameters:
+      - description: User ID
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Mark notifications as read for a user
+      tags:
+      - Notifications
+  /posts:
+    get:
+      consumes:
+      - application/json
+      description: GetAllPosts with pagination
+      parameters:
+      - description: page number
+        in: query
+        name: page
+        type: integer
+      - description: user id
+        in: query
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/models.PostModel'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get All Posts
+      tags:
+      - Posts
+    post:
+      consumes:
+      - application/json
+      description: create new post
+      parameters:
+      - description: post create details
+        in: body
+        name: post
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateOrUpdatePost'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.PostModel'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: create a new post
+      tags:
+      - Posts
+  /posts/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete post by post id, needs auth token of post creator
+      parameters:
+      - description: Post Id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete post by id
+      tags:
+      - Posts
+    get:
+      consumes:
+      - application/json
+      description: Get a post by id
+      parameters:
+      - description: Post id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PostModel'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get a post
+      tags:
+      - Posts
+    patch:
+      consumes:
+      - application/json
+      description: Update post
+      parameters:
+      - description: Post Id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: update post details
+        in: body
+        name: post
+        required: true
+        schema:
+          $ref: '#/definitions/models.CreateOrUpdatePost'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PostModel'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update post
+      tags:
+      - Posts
+  /posts/{id}/commentPost:
+    post:
+      consumes:
+      - application/json
+      description: comment post
+      parameters:
+      - description: Post Id
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: comment value
+        in: body
+        name: post
+        required: true
+        schema:
+          $ref: '#/definitions/models.ComnmentPost'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PostModel'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: comment post
+      tags:
+      - Posts
+  /posts/{id}/likePost:
+    patch:
+      consumes:
+      - application/json
+      description: Like or unlike a post by its id
+      parameters:
+      - description: Post Id
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/models.PostModel'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: like or unlike a post
+      tags:
+      - Posts
+  /posts/search:
+    get:
+      consumes:
+      - application/json
+      description: get posts and users matching the search query
+      parameters:
+      - description: Search query
+        in: query
+        name: searchQuery
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get Posts and users by search query
+      tags:
+      - Posts
+  /user/{id}/following:
+    patch:
+      consumes:
+      - application/json
+      description: follow or un follow a user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Follow/UnFollow User
+      tags:
+      - Users
+  /user/Update/{id}:
+    patch:
+      consumes:
+      - application/json
+      description: update user deatils
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'deatils '
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.UpdateUser'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.UserModel'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: update user data
+      tags:
+      - Users
+  /user/delete/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: delete user
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: delete user
+      tags:
+      - Users
+  /user/getUser/{id}:
+    get:
+      consumes:
+      - application/json
+      description: GetUser Deatils By ID
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.UserModel'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Get User By ID
+      tags:
+      - Users
+  /user/signin:
+    post:
+      consumes:
+      - application/json
+      description: Login a user by providing email and password
+      parameters:
+      - description: user login details
+        in: body
+        name: user
+        required: true
+        schema:
+          $ref: '#/definitions/models.LoginUser'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/models.UserModel'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Login a user
+      tags:
+      - Authentication
   /user/signup:
     post:
       consumes:

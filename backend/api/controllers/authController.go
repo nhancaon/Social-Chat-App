@@ -4,9 +4,13 @@ import (
 	"Server/database"
 	"Server/models"
 	"context"
+	"errors"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
+	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -36,7 +40,7 @@ func Register(c *fiber.Ctx) error {
 		})
 	}
 
-	// Check user đã tồn tại chưa — dùng biến riêng, không đè lên body
+	// Check user đã tồn tại chưa
 	var existingUser models.UserModel
 	err := UserSchema.FindOne(ctx, bson.M{"email": body.Email}).Decode(&existingUser)
 	if err == nil {
@@ -45,8 +49,9 @@ func Register(c *fiber.Ctx) error {
 			"error": "User with email " + body.Email + " already exists",
 		})
 	}
-	if err != mongo.ErrNoDocuments {
-		// lỗi khác (mất kết nối DB, timeout...) -> không phải "không tìm thấy"
+	if !errors.Is(err, mongo.ErrNoDocuments) {
+		fmt.Println("FindOne error (register):", err)
+		// lỗi thật (DB down, timeout...) -> không nên cho qua
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error": "Failed to check existing user",
 		})
@@ -80,20 +85,89 @@ func Register(c *fiber.Ctx) error {
 	newUser.Password = ""
 
 	// create the token
-	// claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.StandardClaims{
-	// 	Issuer:    newUser.ID.Hex(),
-	// 	ExpiresAt: time.Now().Add(time.Hour * 24).Unix(),
-	// })
+	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": newUser.ID.Hex(),
+		"exp": time.Now().Add(time.Hour * 24).Unix(),
+	})
 
-	// token, err := claims.SignedString([]byte(os.Getenv("JWT_SECRET")))
-	// if err != nil {
-	// 	return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
-	// 		"error": "Failed to generate token",
-	// 	})
-	// }
+	token, err := claims.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to generate token",
+		})
+	}
 
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"result": newUser,
-		// "token":  token,
+		"token":  token,
+	})
+}
+
+// Login
+// @Summary Login a user
+// @Description Login a user by providing email and password
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Param user body models.LoginUser true "user login details"
+// @Success 201 {object} models.UserModel
+// @Failure 400 {object} map[string]interface{}
+// @Router /user/signin [post]
+func Login(c *fiber.Ctx) error {
+	UserSchema := database.DB.Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	var body models.LoginUser
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error":   "Invalid request body",
+			"details": err.Error(),
+		})
+	}
+
+	// Check user đã tồn tại chưa
+	var existingUser models.UserModel
+	err := UserSchema.FindOne(ctx, bson.M{"email": body.Email}).Decode(&existingUser)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		// không tìm thấy document -> email chưa tồn tại
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Invalid user with email " + body.Email,
+		})
+	}
+	if err != nil {
+		fmt.Println("FindOne error (login):", err)
+		// lỗi thật (DB down, timeout...) -> không nên cho qua
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to check existing user",
+		})
+	}
+
+	// check password
+	checkPass := bcrypt.CompareHashAndPassword([]byte(existingUser.Password), []byte(body.Password))
+	if checkPass != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Invalid password",
+		})
+	}
+
+	existingUser.Password = "" // remove password from response
+
+	// create the token
+	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": existingUser.ID.Hex(),
+		"exp": time.Now().Add(time.Hour * 24).Unix(),
+	})
+
+	token, err := claims.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Failed to generate token",
+		})
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"result": existingUser,
+		"token":  token,
 	})
 }
