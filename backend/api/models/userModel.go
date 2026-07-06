@@ -31,3 +31,27 @@ type UpdateUser struct {
 	ImageUrl string
 	Bio      string
 }
+
+type UserPublic struct {
+	ID        primitive.ObjectID `json:"_id"`
+	Name      string             `json:"name"`
+	ImageUrl  string             `json:"imageUrl"`
+	Bio       string             `json:"bio"`
+	Followers []string           `json:"followers"`
+	Following []string           `json:"following"`
+}
+
+func (u UserModel) ToPublic() UserPublic {
+	return UserPublic{
+		ID:        u.ID,
+		Name:      u.Name,
+		ImageUrl:  u.ImageUrl,
+		Bio:       u.Bio,
+		Followers: u.Followers,
+		Following: u.Following,
+	}
+}
+
+type UserIdsRequest struct {
+	Ids []string `json:"ids"`
+}

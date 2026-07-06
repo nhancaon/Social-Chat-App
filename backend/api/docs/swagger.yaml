@@ -79,7 +79,7 @@ definitions:
   models.SendMessageM:
     properties:
       content:
-        minLength: 5
+        minLength: 1
         type: string
       receiver:
         type: string
@@ -98,6 +98,13 @@ definitions:
         type: string
       name:
         type: string
+    type: object
+  models.UserIdsRequest:
+    properties:
+      ids:
+        items:
+          type: string
+        type: array
     type: object
   models.UserModel:
     properties:
@@ -625,6 +632,36 @@ paths:
       security:
       - BearerAuth: []
       summary: update user data
+      tags:
+      - Users
+  /user/batch:
+    post:
+      consumes:
+      - application/json
+      description: Get a list of users' public info by an array of user IDs
+      parameters:
+      - description: list of user ids
+        in: body
+        name: ids
+        required: true
+        schema:
+          $ref: '#/definitions/models.UserIdsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get multiple users by their IDs
       tags:
       - Users
   /user/delete/{id}:
