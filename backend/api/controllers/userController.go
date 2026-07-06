@@ -227,8 +227,8 @@ func FollowingUser(c *fiber.Ctx) error {
 		notification := models.Notification{
 			MainUID:   FirstUser.ID.Hex(),
 			TargetID:  SecondUser.ID.Hex(),
-			Deatils:   SecondUser.Name + " Start Following You!",
-			User:      models.User{Name: SecondUser.Name, Avatart: SecondUser.ImageUrl},
+			Details:   SecondUser.Name + " Start Following You!",
+			User:      models.User{Name: SecondUser.Name, Avatar: SecondUser.ImageUrl},
 			CreatedAt: time.Now(),
 		}
 		if _, err := NotificationSchema.InsertOne(ctx, notification); err != nil {
@@ -425,4 +425,52 @@ func DeleteUser(c *fiber.Ctx) error {
 		"success": true,
 		"message": "User Deleted Successfully!",
 	})
+}
+
+// GetUsersByIDs
+// @Summary Get multiple users by their IDs
+// @Description Get a list of users' public info by an array of user IDs
+// @Tags Users
+// @Accept json
+// @Produce json
+// @Param ids body models.UserIdsRequest true "list of user ids"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @security BearerAuth
+// @Router /user/batch [post]
+func GetUsersByIDs(c *fiber.Ctx) error {
+	var body models.UserIdsRequest
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "invalid body"})
+	}
+
+	var objIDs []primitive.ObjectID
+	for _, id := range body.Ids {
+		if oid, err := primitive.ObjectIDFromHex(id); err == nil {
+			objIDs = append(objIDs, oid)
+		}
+	}
+
+	UserSchema := database.DB.Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	cursor, err := UserSchema.Find(ctx, bson.M{"_id": bson.M{"$in": objIDs}})
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+	defer cursor.Close(ctx)
+
+	var users []models.UserModel
+	if err := cursor.All(ctx, &users); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": err.Error()})
+	}
+
+	// Convert sang UserPublic để loại bỏ password & email trước khi trả về
+	publicUsers := make([]models.UserPublic, len(users))
+	for i, u := range users {
+		publicUsers[i] = u.ToPublic()
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"users": publicUsers})
 }

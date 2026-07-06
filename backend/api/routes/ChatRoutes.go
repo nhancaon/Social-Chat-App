@@ -2,14 +2,16 @@ package routes
 
 import (
 	"Server/controllers"
+	"Server/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 func SetupChatRoutes(app *fiber.App) {
-	app.Post("/chat/sendmessage", controllers.SendMessage)
-	app.Get("/chat/getmsgsbynums", controllers.GetMsgsByNums)
-	app.Get("/chat/get-user-unreadmsg", controllers.GetUserUnreadMsg)
-	app.Get("/chat/mark-msg-asreaded", controllers.MarkMsgAsReaded)
+	chat := app.Group("/chat", middleware.AuthMiddleware)
+	chat.Post("/sendmessage", controllers.SendMessage)
+	chat.Get("/getmsgsbynums", controllers.GetMsgsByNums)
+	chat.Get("/get-user-unreadmsg", controllers.GetUserUnreadMsg)
+	chat.Get("/mark-msg-asreaded", controllers.MarkMsgAsReaded)
 
 }

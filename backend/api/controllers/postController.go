@@ -90,7 +90,10 @@ func CreatePost(c *fiber.Ctx) error {
 		})
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(createdPost)
+	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
+		"data": createdPost,
+	})
+
 }
 
 // Get Post
@@ -389,8 +392,10 @@ func GetPostsUsersBySearch(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(fiber.Map{
-		"user":  users,
-		"posts": posts,
+		"data": fiber.Map{
+			"users": users,
+			"posts": posts,
+		},
 	})
 }
 
@@ -458,20 +463,22 @@ func CommentPost(c *fiber.Ctx) error {
 	}
 
 	// create notification (best-effort, doesn't fail the comment if it errors)
-	objId, err := primitive.ObjectIDFromHex(userID)
-	if err == nil {
-		var user models.UserModel
-		if err := UserSchema.FindOne(ctx, bson.M{"_id": objId}).Decode(&user); err == nil {
-			notification := models.Notification{
-				MainUID:   post.Creator,
-				TargetID:  postid.Hex(),
-				Deatils:   user.Name + " Commented on your Post",
-				User:      models.User{Name: user.Name, Avatart: user.ImageUrl},
-				CreatedAt: time.Now(),
-			}
-			if _, err := NotificationSchema.InsertOne(ctx, notification); err != nil {
-				// log and continue, the comment itself already succeeded
-				// (use your logger here if available)
+	if post.Creator != userID {
+		objId, err := primitive.ObjectIDFromHex(userID)
+		if err == nil {
+			var user models.UserModel
+			if err := UserSchema.FindOne(ctx, bson.M{"_id": objId}).Decode(&user); err == nil {
+				notification := models.Notification{
+					MainUID:   post.Creator,
+					TargetID:  postid.Hex(),
+					Details:   user.Name + " Commented on your Post",
+					User:      models.User{Name: user.Name, Avatar: user.ImageUrl},
+					CreatedAt: time.Now(),
+				}
+				if _, err := NotificationSchema.InsertOne(ctx, notification); err != nil {
+					// log and continue, the comment itself already succeeded
+					// (use your logger here if available)
+				}
 			}
 		}
 	}
@@ -541,19 +548,21 @@ func LikePost(c *fiber.Ctx) error {
 		}
 
 		// create notification (best-effort)
-		objId, err := primitive.ObjectIDFromHex(userID)
-		if err == nil {
-			var user models.UserModel
-			if err := UserSchema.FindOne(ctx, bson.M{"_id": objId}).Decode(&user); err == nil {
-				notification := models.Notification{
-					MainUID:   post.Creator,
-					TargetID:  post.ID.Hex(),
-					Deatils:   user.Name + " Liked your Post",
-					User:      models.User{Name: user.Name, Avatart: user.ImageUrl},
-					CreatedAt: time.Now(),
-				}
-				if _, err := NotificationSchema.InsertOne(ctx, notification); err != nil {
-					// log and continue, the like itself already succeeded
+		if post.Creator != userID {
+			objId, err := primitive.ObjectIDFromHex(userID)
+			if err == nil {
+				var user models.UserModel
+				if err := UserSchema.FindOne(ctx, bson.M{"_id": objId}).Decode(&user); err == nil {
+					notification := models.Notification{
+						MainUID:   post.Creator,
+						TargetID:  post.ID.Hex(),
+						Details:   user.Name + " Liked your Post",
+						User:      models.User{Name: user.Name, Avatar: user.ImageUrl},
+						CreatedAt: time.Now(),
+					}
+					if _, err := NotificationSchema.InsertOne(ctx, notification); err != nil {
+						// log and continue, the like itself already succeeded
+					}
 				}
 			}
 		}
@@ -566,7 +575,7 @@ func LikePost(c *fiber.Ctx) error {
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"post": post,
+		"data": post,
 	})
 }
 

@@ -5,6 +5,7 @@ import (
 	"Server/models"
 	"context"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -26,7 +27,7 @@ import (
 func SendMessage(c *fiber.Ctx) error {
 
 	var MessageSchema = database.DB.Collection("messages")
-	var UnReadMsgSchema = database.DB.Collection("unReadedmessages")
+	var UnReadMsgSchema = database.DB.Collection("unReadmessages")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -46,9 +47,9 @@ func SendMessage(c *fiber.Ctx) error {
 	}
 
 	// manual validation matching the `validate` tags on SendMessageM
-	if len(body.Content) < 5 {
+	if len(strings.TrimSpace(body.Content)) < 1 {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "content is required and must be at least 5 characters",
+			"error": "content is required",
 		})
 	}
 	if body.Receiver == "" {
@@ -82,7 +83,7 @@ func SendMessage(c *fiber.Ctx) error {
 
 	// update or create the unread message count for the receiver
 	filter := bson.M{"mainUserid": msg.Receiver, "otherUserid": msg.Sender}
-	update := bson.M{"$inc": bson.M{"numOfUnreadMessages": 1}, "$set": bson.M{"isRead": false}}
+	update := bson.M{"$inc": bson.M{"numOfUnreadMessages": 1}, "$set": bson.M{"isReadMessage": false}}
 	opts := options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)
 
 	var unReadMsg models.UnReadMsg
@@ -148,8 +149,8 @@ func GetMsgsByNums(c *fiber.Ctx) error {
 	}
 
 	// construct the filter
-	senderFilter := bson.M{"sender": firstuid, "recever": seconduid}
-	receiverFilter := bson.M{"sender": seconduid, "recever": firstuid}
+	senderFilter := bson.M{"sender": firstuid, "receiver": seconduid}
+	receiverFilter := bson.M{"sender": seconduid, "receiver": firstuid}
 	filter := bson.M{"$or": []bson.M{senderFilter, receiverFilter}}
 
 	const LIMIT = 2
@@ -209,7 +210,7 @@ func GetMsgsByNums(c *fiber.Ctx) error {
 // @Router /chat/get-user-unreadmsg [get]
 func GetUserUnreadMsg(c *fiber.Ctx) error {
 
-	var UnReadedMsgSchema = database.DB.Collection("unReadedmessages")
+	var UnReadedMsgSchema = database.DB.Collection("unReadmessages")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -234,7 +235,7 @@ func GetUserUnreadMsg(c *fiber.Ctx) error {
 		})
 	}
 
-	filter := bson.M{"mainUserid": queryUserid, "isReaded": false}
+	filter := bson.M{"mainUserid": queryUserid, "isReadMessage": false}
 
 	cursor, err := UnReadedMsgSchema.Find(ctx, filter)
 	if err != nil {
@@ -256,7 +257,7 @@ func GetUserUnreadMsg(c *fiber.Ctx) error {
 				"error":   err.Error(),
 			})
 		}
-		// filter already guarantees isReaded == false, so every doc here counts
+		// filter already guarantees isRead == false, so every doc here counts
 		urms = append(urms, urm)
 		totalUnreadMessageCount += urm.NumOfUnreadMessages
 	}
@@ -273,7 +274,7 @@ func GetUserUnreadMsg(c *fiber.Ctx) error {
 
 // MarkMsgAsReaded
 // @Summary mark messages as read for user
-// @Description mark messages as read for user, updates the record to isReaded=true, count=0
+// @Description mark messages as read for user, updates the record to isReadMessage=true, count=0
 // @Tags Chat
 // @Accept json
 // @Produce json
@@ -285,7 +286,7 @@ func GetUserUnreadMsg(c *fiber.Ctx) error {
 // @Router /chat/mark-msg-asreaded [get]
 func MarkMsgAsReaded(c *fiber.Ctx) error {
 
-	var UnReadedMsgSchema = database.DB.Collection("unReadedmessages")
+	var UnReadedMsgSchema = database.DB.Collection("unReadmessages")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
@@ -312,7 +313,7 @@ func MarkMsgAsReaded(c *fiber.Ctx) error {
 	}
 
 	filter := bson.M{"mainUserid": mainuid, "otherUserid": otheruid}
-	update := bson.M{"$set": bson.M{"isReaded": true, "numOfUnreadedMessages": 0}}
+	update := bson.M{"$set": bson.M{"isReadMessage": true, "numOfUnreadMessages": 0}}
 	findOpts := options.FindOneAndUpdate().SetUpsert(true).SetReturnDocument(options.After)
 
 	var updatedDoc bson.M

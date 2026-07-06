@@ -53,7 +53,7 @@ func MarknotAsReaded(c *fiber.Ctx) error {
 	// regex does substring matching (not equality) and is vulnerable to
 	// regex injection if the value isn't escaped
 	filter := bson.M{"mainuid": id}
-	update := bson.M{"$set": bson.M{"isreded": true}}
+	update := bson.M{"$set": bson.M{"isRead": true}}
 
 	result, err := NotificationSchema.UpdateMany(ctx, filter, update)
 	if err != nil {

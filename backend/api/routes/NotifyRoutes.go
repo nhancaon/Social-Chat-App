@@ -2,13 +2,12 @@ package routes
 
 import (
 	"Server/controllers"
+	"Server/middleware"
 
 	"github.com/gofiber/fiber/v2"
 )
 
 func SetupNotificationRoutes(app *fiber.App) {
-	// auth
-	app.Get("/notification/mark-notification-asreaded", controllers.MarknotAsReaded)
-	app.Get("/notification/:userid", controllers.GetUserNotification)
-
+	app.Get("/notification/mark-notification-asreaded", middleware.AuthMiddleware, controllers.MarknotAsReaded)
+	app.Get("/notification/:userid", middleware.AuthMiddleware, controllers.GetUserNotification)
 }

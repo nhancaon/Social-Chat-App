@@ -16,7 +16,7 @@ type Message struct {
 
 // interfaces
 type SendMessageM struct {
-	Content  string `json:"content" bson:"content"  validate:"required,min=5"`
+	Content  string `json:"content" bson:"content"  validate:"required,min=1"`
 	Sender   string `json:"sender" bson:"sender"  validate:"required"`
 	Receiver string `json:"receiver" bson:"receiver"  validate:"required"`
 }

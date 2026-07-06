@@ -1,0 +1,113 @@
+<template>
+  <q-header class="bg-white text-grey-10" bordered>
+    <q-toolbar class="constrain x">
+      <q-btn flat to="/">
+        <q-icon left size="3em" name="eva-camera-outline" />
+        <q-toolbar-title class="text grand-hotel text-bold"> Home</q-toolbar-title>
+      </q-btn>
+
+      <q-separator class="large-screen-only" vertical spaced />
+
+      <q-toolbar-title class="text-center">
+        <q-input v-model="searchText" bottom-slots class="nuks" label="search" @keyup.enter="GoSearch" />
+      </q-toolbar-title>
+
+      <q-btn round v-show="isLoggedIn" @click="GoToChat"
+        :icon="getUnreadMsgCount > 0 ? 'eva-message-square-outline' : 'eva-message-square'"
+        :color="getUnreadMsgCount > 0 ? 'primary' : 'dark'">
+        <q-badge v-if="getUnreadMsgCount > 0" color="negative" floating rounded :label="getUnreadMsgCount" />
+      </q-btn>
+
+      <q-btn round v-show="isLoggedIn" @click="GoToNotification"
+        :icon="getUnreadNotificationCount > 0 ? 'eva-bell-outline' : 'eva-bell'"
+        :color="getUnreadNotificationCount > 0 ? 'primary' : 'dark'">
+        <q-badge v-if="getUnreadNotificationCount > 0" floating color="negative" rounded
+          :label="getUnreadNotificationCount" />
+      </q-btn>
+
+      <q-btn v-show="isLoggedIn" round>
+        <q-avatar size="42px" v-if="currentUser?.imageUrl">
+          <img :src="currentUser.imageUrl">
+        </q-avatar>
+        <q-avatar size="42px" v-else>
+          <img src="https://cdn-icons-png.flaticon.com/512/3237/3237472.png">
+        </q-avatar>
+        <q-menu>
+          <q-list style="min-width: 100px">
+            <q-item clickable v-close-popup @click="Profile">
+              <q-item-section>Profile</q-item-section>
+            </q-item>
+            <q-separator />
+            <q-item clickable v-close-popup @click="LogUserOut">
+              <q-item-section>Logout</q-item-section>
+            </q-item>
+          </q-list>
+        </q-menu>
+      </q-btn>
+
+    </q-toolbar>
+  </q-header>
+</template>
+
+<script>
+import { mapGetters, mapActions } from 'vuex'
+
+export default {
+  name: 'NavBar',
+  data() {
+    return {
+      searchText: '',
+    }
+  },
+  computed: {
+    ...mapGetters('auth', ['GetAuthData']),
+    ...mapGetters('chat', ['getUnreadMsgCount']),
+    ...mapGetters('notification', ['getUnreadNotificationCount']),
+    isLoggedIn() {
+      return !!this.GetAuthData?.result
+    },
+    currentUser() {
+      return this.GetAuthData?.result
+    },
+  },
+  methods: {
+    ...mapActions('auth', ['logout']),
+
+    GoSearch() {
+      if (!this.searchText) return
+      this.$router.push({ path: '/Search', query: { search: this.searchText } })
+    },
+    Profile() {
+      const id = this.currentUser?._id
+      this.$router.push(`/Profile/${id}`)
+    },
+    async LogUserOut() {
+      await this.logout()
+      this.$router.push('/Auth')
+    },
+    GoToNotification() {
+      this.$router.push('/Notification')
+    },
+    GoToChat() {
+      this.$router.push('/Chat')
+    },
+
+
+  },
+
+}
+</script>
+
+<style lang="sass">
+.nuks
+  width: 250px
+  text-align: center
+  display: inline-block !important
+
+.q-toolbar-title
+  display: flex
+  align-items: center
+
+.q-btn
+  margin-left: 10px
+</style>
