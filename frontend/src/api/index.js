@@ -16,6 +16,7 @@ export const fetchUserProfile = (id) => API.get(`/user/getUser/${id}`);
 export const getSugUser = (id) => API.get(`/user/getSug?id=${id}`);
 export const UpdateUser = (userData) => API.patch(`user/Update/${userData._id}`, userData);
 export const following = (id) => API.patch(`/user/${id}/following`);
+export const fetchUsersByIds = (ids) => API.post('/user/batch', { ids });
 
 
 // posts methods
@@ -30,11 +31,11 @@ export const fetchPostsUsersbySearch = (searchQuery) => API.get(`posts/search?se
 
 
 //  Notification
-export const GetNofificationForUser = (id) => API.get(`notification/${id}`)
-export const MartNotificationAsReaded = (id) => API.get(`notification/mark-notification-asreaded?id=${id}`)
+export const GetNotificationForUser = (id) => API.get(`notification/${id}`)
+export const MarkNotificationAsReaded = (id) => API.get(`notification/mark-notification-asreaded?id=${id}`)
 
 // chat -
 export const SendMessage = (msg) => API.post('chat/sendmessage', msg);
-export const GetUnreadedMsgNum = (id) => API.get(`chat/get-user-unreadedmsg?userid=${id}`)
+export const GetUnreadedMsgNum = (id) => API.get(`chat/get-user-unreadmsg?userid=${id}`)
 export const GetMsgsBetweenTwoUsersByNum = (from, firstuid, seconduid) => API.get(`chat/getmsgsbynums?from=${from}&firstuid=${firstuid}&seconduid=${seconduid}`)
 export const markMsgAsReaded = (mainuid, otheruid) => API.get(`chat/mark-msg-asreaded?mainuid=${mainuid}&otheruid=${otheruid}`)

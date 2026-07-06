@@ -1,11 +1,15 @@
 import * as api from '@/api/index.js'
 
-const Users = {
-  state: {
+function initialState() {
+  return {
     User: null,
     loading: false,
     error: null,
-  },
+  }
+}
+const Users = {
+  namespaced: true,
+  state: initialState(),
   getters: {
     GetUser: (state) => state.User,
   },
@@ -19,8 +23,22 @@ const Users = {
     SET_ERROR(state, error) {
       state.error = error
     },
+    RESET_STATE(state) {
+      Object.assign(state, initialState())
+    },
   },
   actions: {
+    async ensureCurrentUserLoaded({ state, commit, rootGetters }) {
+      const id = rootGetters['auth/currentUserId']
+      if (id && !state.User) {
+        try {
+          const { data } = await api.fetchUserProfile(id)
+          commit('SET_USER', data.user)
+        } catch (error) {
+          commit('SET_ERROR', error)
+        }
+      }
+    },
     // lấy danh sách follower + following hợp nhất, kèm thông tin profile
     async GetUserFollowersFollowing({ state, commit }) {
       commit('SET_LOADING', true)
@@ -29,18 +47,10 @@ const Users = {
         const following = state.User?.following || []
         const uniqueIds = Array.from(new Set([...followers, ...following]))
 
-        const userdata = await Promise.all(
-          uniqueIds.map(async (uid) => {
-            const { data } = await api.fetchUserProfile(uid)
-            return {
-              _id: data.user._id,
-              name: data.user.name,
-              imageUrl: data.user.imageUrl,
-            }
-          })
-        )
+        if (uniqueIds.length === 0) return []
 
-        return userdata
+        const { data } = await api.fetchUsersByIds(uniqueIds)
+        return data.users
       } catch (error) {
         commit('SET_ERROR', error)
         throw error

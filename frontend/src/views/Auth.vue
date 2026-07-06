@@ -1,88 +1,42 @@
 <template>
- <q-page class="constrain q-pa-md">
+  <q-page class="constrain q-pa-md">
     <div class="row q-col-gutter-lg">
-        <div class="col-5">
-            <q-card class="my-card" style="width: 100%; padding: 10px;">
-                <h1 class="text-h6 text-center">Sign in</h1>
-                <q-card-section>
-                    <form @submit.prevent.stop="Login" class="q-gutter-md">
-                        <q-input
-                          filled
-                           v-model="signinForm.email"
-                           label="Your Email *"
-                           hint="Email"
-                           lazy-rules
-                        />
-                        <q-input
-                           filled
-                           v-model="signinForm.password"
-                           label="Your Password *"
-                           hint="Password"
-                           type="password"
-                           lazy-rules
-                        />
-                        <div>
-                            <q-btn
-                              label="Sign in"
-                              type="submit"
-                              color="primary"
-                              :loading="signinLoading"
-                              :disable="signinLoading"
-                            />
-                        </div>
-                    </form>
-                </q-card-section>
-            </q-card>
-        </div>
-        <div class="col-7">
-            <q-card class="my-card" style="width: 100%; padding: 10px;">
-                <h1 class="text-h6 text-center">Sign up | Create New Account</h1>
-                <q-card-section>
-                    <form @submit.prevent.stop="Register" class="q-gutter-md">
-                        <q-input
-                          filled
-                           v-model="signupForm.firstName"
-                           label="Your First Name *"
-                           hint="First name"
-                           lazy-rules
-                        />
-                        <q-input
-                          filled
-                           v-model="signupForm.lastName"
-                           label="Your Last Name *"
-                           hint="Last name"
-                           lazy-rules
-                        />
-                        <q-input
-                          filled
-                           v-model="signupForm.email"
-                           label="Your Email *"
-                           hint="Email"
-                           lazy-rules
-                        />
-                        <q-input
-                           filled
-                           v-model="signupForm.password"
-                           type="password"
-                           label="Your Password *"
-                           hint="Password"
-                           lazy-rules
-                        />
-                        <div>
-                            <q-btn
-                              label="Create New Account"
-                              type="submit"
-                              color="positive"
-                              :loading="signupLoading"
-                              :disable="signupLoading"
-                            />
-                        </div>
-                    </form>
-                </q-card-section>
-            </q-card>
-        </div>
+      <div class="col-5">
+        <q-card class="my-card" style="width: 100%; padding: 10px;">
+          <h1 class="text-h6 text-center">Sign in</h1>
+          <q-card-section>
+            <form @submit.prevent.stop="Login" class="q-gutter-md">
+              <q-input filled v-model="signinForm.email" label="Your Email *" hint="Email" lazy-rules />
+              <q-input filled v-model="signinForm.password" label="Your Password *" hint="Password" type="password"
+                lazy-rules />
+              <div>
+                <q-btn label="Sign in" type="submit" color="primary" :loading="signinLoading"
+                  :disable="signinLoading" />
+              </div>
+            </form>
+          </q-card-section>
+        </q-card>
+      </div>
+      <div class="col-7">
+        <q-card class="my-card" style="width: 100%; padding: 10px;">
+          <h1 class="text-h6 text-center">Sign up | Create New Account</h1>
+          <q-card-section>
+            <form @submit.prevent.stop="Register" class="q-gutter-md">
+              <q-input filled v-model="signupForm.firstName" label="Your First Name *" hint="First name" lazy-rules />
+              <q-input filled v-model="signupForm.lastName" label="Your Last Name *" hint="Last name" lazy-rules />
+              <q-input filled v-model="signupForm.email" label="Your Email *" hint="Email" lazy-rules />
+              <q-input filled v-model="signupForm.password" type="password" label="Your Password *" hint="Password"
+                lazy-rules />
+              <div>
+                <q-btn label="Create New Account" type="submit" color="positive" :loading="signupLoading"
+                  :disable="signupLoading" />
+              </div>
+            </form>
+          </q-card-section>
+        </q-card>
+      </div>
     </div>
- </q-page>
+  </q-page>
 </template>
 
 <script>
@@ -107,7 +61,7 @@ export default {
     }
   },
   methods: {
-    ...mapActions(['signin', 'signup']),
+    ...mapActions('auth', ['signin', 'signup']),
 
     notifyError(message) {
       this.$q.notify({
@@ -159,7 +113,7 @@ export default {
         this.$router.push('/')
       } catch (error) {
         const message =
-          error?.response?.data?.message || error?.response?.data || 'Sign in failed'
+          error?.response?.data?.error || error?.response?.data?.message || 'Sign in failed'
         this.notifyError(`Error: ${message}`)
       } finally {
         this.signinLoading = false

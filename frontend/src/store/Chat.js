@@ -1,77 +1,78 @@
 import * as api from '../api/index.js';
 
+
+function initialState() {
+  return {
+    unreadMsgCount: 0,
+  }
+}
+
 const Chat = {
-  state: {
-    unReadedMsgsNUM: 0
-  },
+  namespaced: true,
+  state: initialState(),
   getters: {
-    getUnReadedMsg: (state) => () => {
-      return state.unReadedMsgsNUM
-    }
+    getUnreadMsgCount: (state) => state.unreadMsgCount
   },
   mutations: {
-    updateUnreadedMsg(state, payload) {
-      state.unReadedMsgsNUM = payload
-    }
+    updateUnreadMsgCount(state, payload) {
+      state.unreadMsgCount = payload
+    },
+    RESET_STATE(state) {
+      Object.assign(state, initialState())
+    },
   },
   actions: {
-    async GetUnreadedMessageNum(context, uid) {
+    async GetUnreadMessageNum({ commit }, uid) {
       try {
-        let { data } = await api.GetUnreadedMsgNum(uid)
-        context.commit('updateUnreadedMsg', data.total)
-        return data;
+        const { data } = await api.GetUnreadedMsgNum(uid)
+        commit('updateUnreadMsgCount', data.total)
+        return data
       } catch (error) {
-        console.log(error)
+        console.error('GetUnreadMessageNum error:', error)
+        throw error
       }
     },
-    async GetChatMsgsBetweenTwoUsers(context, ndata) {
+
+    async GetChatMsgsBetweenTwoUsers(_, payload) {
       try {
-        let { data } = await api.GetMsgsBetweenTwoUsersByNum(ndata.from, ndata.firstuid, ndata.seconduid)
-        return data;
+        const { data } = await api.GetMsgsBetweenTwoUsersByNum(
+          payload.from,
+          payload.firstuid,
+          payload.seconduid
+        )
+        return data
       } catch (error) {
-        console.log(error)
+        console.error('GetChatMsgsBetweenTwoUsers error:', error)
+        throw error
       }
     },
-    async SendMessage(context, sdata) {
+
+    async SendMessage(_, payload) {
       try {
-        const msg =
-        {
-          "content": sdata.content,
-          "sender": sdata.sender,
-          "recever": sdata.recever,
+        const msg = {
+          content: payload.content,
+          sender: payload.sender,
+          receiver: payload.receiver,
         }
-        // console.log("cont", msg)
-        let { data } = await api.SendMessage(msg)
-        console.log('chat store sned message', data)
-
-        return data;
+        const { data } = await api.SendMessage(msg)
+        return data
       } catch (error) {
-        console.log(error)
+        console.error('SendMessage error:', error)
+        throw error
       }
     },
-    async MarkMsgsAsReaded(context, datau) {
+
+    async MarkMsgsAsReaded({ dispatch }, payload) {
       try {
-        let { data } = await api.markMsgAsReaded(datau.mainuid, datau.otheruid)
-        var olunreaded = context.state.unReadedMsgsNUM;
-        var unreaded = datau.GetunReadedmessage;
-
-        var finalnum = olunreaded - unreaded;
-        context.commit('updateUnreadedMsg', finalnum);
-
-        // console.log()
-        return data;
-
+        const { data } = await api.markMsgAsReaded(payload.mainuid, payload.otheruid)
+        await dispatch('GetUnreadMessageNum', payload.mainuid)
+        return data
       } catch (error) {
-        console.log(error)
+        console.error('MarkMsgsAsReaded error:', error)
+        throw error
       }
     }
   }
 }
 
 export default Chat;
-
-
-
-
-
-

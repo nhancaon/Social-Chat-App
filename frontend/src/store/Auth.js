@@ -1,31 +1,38 @@
 import * as api from '../api/index.js'
 import { jwtDecode } from 'jwt-decode'
 
+function initialState() {
+  return { authData: null } // { token, result: { _id, name, ... } }
+}
+
+
 const Auth = {
-  state: {
-    authData: null,
-  },
+  namespaced: true,
+  state: initialState(),
   getters: {
     GetAuthData: (state) => state.authData,
+    isAuthenticated: (state) => !!state.authData?.token,
+    currentUserId: (state) => state.authData?.result?._id || null,
   },
   mutations: {
     SET_AUTH(state, payload) {
       localStorage.setItem('profile', JSON.stringify({ ...payload }))
       state.authData = payload
     },
-    SET_AUTH_FROM_STORAGE(state, user) {
-      state.authData = user
-    },
     LOGOUT(state) {
       localStorage.removeItem('profile')
-      state.authData = null
+      Object.assign(state, initialState())
+    },
+    RESET_STATE(state) {
+      Object.assign(state, initialState())
     },
   },
   actions: {
-    async signin({ commit }, formData) {
+    async signin({ commit, dispatch }, formData) {
       try {
         const { data } = await api.signIn(formData)
         commit('SET_AUTH', data)
+        dispatch('fetchInitialData', data.result._id)
         return data
       } catch (error) {
         console.log(error)
@@ -45,7 +52,7 @@ const Auth = {
     },
 
     // gọi 1 lần lúc app khởi động (vd: App.vue mounted) để khôi phục session từ localStorage
-    initAuth({ commit }) {
+    initAuth({ commit, dispatch }) {
       let user = null
       try {
         user = JSON.parse(localStorage.getItem('profile'))
@@ -73,11 +80,28 @@ const Auth = {
         }
       }
 
-      commit('SET_AUTH_FROM_STORAGE', user)
+      commit('SET_AUTH', user)
+      if (user?.result?._id) {
+        dispatch('fetchInitialData', user.result._id)
+      }
     },
 
-    logout({ commit }) {
+    async fetchInitialData({ dispatch }, userId) {
+      try {
+        await Promise.all([
+          dispatch('chat/GetUnreadMessageNum', userId, { root: true }),
+          dispatch('notification/GetUnReadNotifyNum', userId, { root: true }),
+        ])
+      } catch (error) {
+        // không throw — lỗi fetch unread không nên chặn luồng login/khởi động app
+        console.log('fetchInitialData error:', error)
+      }
+    },
+
+    logout({ commit, dispatch }) {
       commit('LOGOUT')
+      dispatch('chat/RESET_STATE', null, { root: true })
+      dispatch('notification/RESET_STATE', null, { root: true })
     },
   },
 }

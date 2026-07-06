@@ -1,8 +1,8 @@
 <template>
   <q-layout view="lHh Lpr lFf">
-    <NavBar/>
+    <NavBar />
     <q-page-container class="bg-grey-1">
-      <router-view/>
+      <router-view />
 
     </q-page-container>
   </q-layout>
@@ -15,7 +15,7 @@ import { mapActions } from 'vuex'
 export default {
   name: 'MainLayout',
   methods: {
-    ...mapActions(['initAuth']),
+    ...mapActions('auth', ['initAuth']),
   },
   async mounted() {
     await this.initAuth()
