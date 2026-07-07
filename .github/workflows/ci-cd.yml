@@ -1,0 +1,12 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, auto-testing]
+  pull_request:
+    branches: [main, auto-testing]
+
+jobs:
+  backend-tests:
+    uses: ./.github/workflows/be-tests.yml
+    secrets: inherit
