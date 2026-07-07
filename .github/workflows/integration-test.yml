@@ -11,7 +11,7 @@ jobs:
 
     services:
       mongodb:
-        image: mongo:7.0
+        image: mongo:8.0
         ports:
           - 27017:27017
         options: >-
@@ -21,7 +21,7 @@ jobs:
           --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Backend Environment
         uses: ./.github/actions/setup-backend

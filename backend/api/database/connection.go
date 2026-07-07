@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"go.mongodb.org/mongo-driver/mongo"
@@ -16,7 +17,10 @@ func Connect() {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	mongoUri := "mongodb://localhost:27017"
+	mongoUri := os.Getenv("MONGODB_URI")
+	if mongoUri == "" {
+		mongoUri = "mongodb://localhost:27017" // giá trị mặc định khi chạy local
+	}
 	clientOptions := options.Client().ApplyURI(mongoUri)
 
 	var err error
