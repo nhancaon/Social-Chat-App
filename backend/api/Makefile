@@ -7,3 +7,7 @@ clear-swag:
 swag-init: clear-swag
 	@echo "Generating swagger docs..."
 	swag init -g main.go
+
+# run all tests
+test:
+	go test ./tests/... -v
