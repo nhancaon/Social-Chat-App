@@ -1,0 +1,10 @@
+name: 'Build Frontend'
+description: 'Builds the Vue frontend app for production'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Build Vue App
+      run: npm run build
+      working-directory: ./frontend
+      shell: bash

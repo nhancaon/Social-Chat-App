@@ -5,6 +5,7 @@ import (
 	_ "Server/docs"
 	"Server/routes"
 	"log"
+	"os"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -27,6 +28,11 @@ func main() {
 	//load env
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Error loading env", err)
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "5000"
 	}
 
 	database.Connect()
@@ -58,5 +64,5 @@ func main() {
 	//Server swagger docs
 	app.Get("/swagger/*", swagger.HandlerDefault)
 
-	app.Listen(":5000")
+	app.Listen(":" + port)
 }

@@ -1,0 +1,24 @@
+name: 'Setup Backend Environment'
+description: 'Sets up Go environment and installs backend dependencies'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Go
+      uses: actions/setup-go@v6
+      with:
+        go-version: '1.25'
+        cache: true
+        cache-dependency-path: backend/api/go.sum
+      # cache: true đã tự lo việc cache Go module,
+      # không cần bước actions/cache@v3 riêng nữa
+
+    - name: Verify and download dependencies
+      run: |
+        go mod download
+        go mod verify
+      working-directory: ./backend/api
+      shell: bash
+      # Không dùng "go mod tidy" / "go get -t" ở đây vì 2 lệnh đó
+      # SỬA file go.mod/go.sum. Nếu thiếu dependency, muốn CI báo lỗi
+      # (fail rõ ràng) để mình tự sửa code, không để CI âm thầm vá.

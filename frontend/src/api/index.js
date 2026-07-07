@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API = axios.create({ baseURL: process.env.VUE_APP_APIUrl })
+const API = axios.create({ baseURL: process.env.VUE_APP_API_URL })
 // up
 API.interceptors.request.use((req) => {
   if (localStorage.getItem('profile')) {
