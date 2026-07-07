@@ -10,3 +10,8 @@ jobs:
   backend-tests:
     uses: ./.github/workflows/be-tests.yml
     secrets: inherit
+
+  integration-frotend-tests:
+    uses: ./.github/workflows/integration-test.yml
+    needs: backend-tests
+    secrets: inherit
