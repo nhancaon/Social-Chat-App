@@ -24,11 +24,15 @@ import (
 // @name Authorization
 
 func main() {
+	//load env example
+	if err := godotenv.Load(".env.example"); err != nil {
+		log.Println("No .env.example file found, using system environment variables instead")
+	}
 
 	//load env
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using system environment variables instead")
-	}
+	// if err := godotenv.Load(); err != nil {
+	// 	log.Println("No .env file found, using system environment variables instead")
+	// }
 
 	port := os.Getenv("PORT")
 	if port == "" {
