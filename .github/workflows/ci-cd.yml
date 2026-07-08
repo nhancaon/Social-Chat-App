@@ -15,3 +15,8 @@ jobs:
     uses: ./.github/workflows/integration-test.yml
     needs: backend-tests
     secrets: inherit
+
+  deploy-to-dockerhub:
+    uses: ./.github/workflows/docker-deployment.yml
+    needs: integration-frotend-tests
+    secrets: inherit
