@@ -1,0 +1,63 @@
+name: Deploy Images To Docker Hub
+on:
+  workflow_call:
+    secrets:
+      DOCKER_USER:
+        required: true
+      DOCKER_PASSWORD:
+        required: true
+
+env:
+  DOCKER_REPO_BACK_API: "go-appchat-api"
+  DOCKER_REPO_FRONT: "vue-appchat-fe"
+
+jobs:
+  build-backend:
+    name: Build & push backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            backend
+          sparse-checkout-cone-mode: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: backend/api/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USER }}/${{ env.DOCKER_REPO_BACK_API }}:${{ github.sha }}
+            ${{ secrets.DOCKER_USER }}/${{ env.DOCKER_REPO_BACK_API }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  build-frontend:
+    name: Build & push frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          sparse-checkout: |
+            frontend
+          sparse-checkout-cone-mode: true
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v4
+        with:
+          username: ${{ secrets.DOCKER_USER }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: frontend/Dockerfile
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USER }}/${{ env.DOCKER_REPO_FRONT }}:${{ github.sha }}
+            ${{ secrets.DOCKER_USER }}/${{ env.DOCKER_REPO_FRONT }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
