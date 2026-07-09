@@ -1,0 +1,50 @@
+services:
+  SocialChatBackend:
+    image: nhancaon/go-appchat-api
+    container_name: social-chat-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./backend/backend.env.example
+    networks:
+      - app-network
+    depends_on:
+      mongodb:
+        condition: service_healthy
+
+  SocialChatFrontend:
+    image: nhancaon/vue-appchat-fe
+    container_name: social-chat-fe
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    environment:
+      - API_URL=http://localhost:5000/
+    networks:
+      - app-network
+    depends_on:
+      - SocialChatBackend
+
+  mongodb:
+    container_name: mongodb
+    image: mongo:8.0
+    env_file:
+      - ./mongo.env.example
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - app-network
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo-data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge

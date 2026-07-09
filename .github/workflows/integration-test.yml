@@ -1,0 +1,104 @@
+name: Frontend Integration E2E Testing
+
+on:
+  workflow_call:
+
+jobs:
+  integration-tests:
+    name: Frontend Integration Tests (with Backend)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      mongodb:
+        image: mongo:8.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping: 1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Backend Environment
+        uses: ./.github/actions/setup-backend
+
+      - name: Setup Frontend Environment
+        uses: ./.github/actions/setup-frontend
+
+      # Start backend API in background
+      - name: Start Backend API
+        run: |
+          echo "Starting backend server..."
+          go run main.go &
+          echo $! > backend.pid
+          # $! = PID của tiến trình chạy nền gần nhất (đúng cú pháp, khác "&!" - không hợp lệ)
+          sleep 10
+          echo "Backend process started with PID: $(cat backend.pid)"
+        working-directory: ./backend/api
+        env:
+          MONGODB_URI: mongodb://localhost:27017
+          PORT: 5000
+
+      # Wait for backend to be ready
+      - name: Wait For Backend API
+        run: |
+          echo "Waiting for backend on port 5000..."
+          timeout 60 bash -c 'until nc -z localhost 5000; do echo "Waiting for backend..."; sleep 2; done'
+          echo "Backend port is open, testing HTTP response..."
+          timeout 30 bash -c 'until curl -f http://localhost:5000 2>/dev/null; do echo "Waiting for HTTP response..."; sleep 2; done'
+          echo "Backend API is ready!"
+
+      # Start frontend in background
+      - name: Start Frontend in background
+        run: |
+          echo "Starting frontend application on port 8080..."
+          npm run serve > frontend.log 2>&1 &
+          echo $! > frontend.pid
+          sleep 15
+          echo "Frontend process started"
+          if pgrep -f "vue-cli-service serve" > /dev/null; then
+            echo "Vue CLI service is running"
+          else
+            echo "Vue CLI service not found, checking logs:"
+            cat frontend.log || echo "No log file found"
+          fi
+        working-directory: ./frontend
+        env:
+          VUE_APP_API_URL: http://localhost:5000
+          PORT: 8080
+          # Đổi từ port 80 sang 8080: tránh cần "sudo" để bind privileged port,
+          # tránh xung đột quyền với node_modules đã cài không dùng sudo trước đó
+
+      # Wait for frontend to be ready
+      - name: Wait For Frontend Application
+        run: |
+          echo "Waiting for frontend on port 8080..."
+          timeout 60 bash -c 'until nc -z localhost 8080; do echo "Waiting for frontend..."; sleep 2; done'
+          echo "Frontend port is open, testing HTTP response..."
+          timeout 30 bash -c 'until curl -f http://localhost:8080 2>/dev/null; do echo "Waiting for HTTP response..."; sleep 2; done'
+          echo "Frontend application is ready!"
+        working-directory: ./frontend
+
+      - name: Run Cypress Integration Tests
+        run: npm run cy:run:auth
+        working-directory: ./frontend
+        env:
+          CYPRESS_BASE_URL: http://localhost:8080
+          CYPRESS_API_URL: http://localhost:5000
+
+      - name: Stop Applications
+        if: always()
+        run: |
+          if [ -f ./backend/api/backend.pid ]; then
+            kill "$(cat ./backend/api/backend.pid)" || true
+          fi
+          if [ -f ./frontend/frontend.pid ]; then
+            kill "$(cat ./frontend/frontend.pid)" || true
+          fi
+          # Fallback: đảm bảo dọn sạch process còn giữ port, dù kill theo PID có thành công hay không
+          lsof -ti:5000 | xargs -r kill -9 || true
+          lsof -ti:8080 | xargs -r kill -9 || true

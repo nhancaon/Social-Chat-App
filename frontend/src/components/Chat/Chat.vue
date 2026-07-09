@@ -7,7 +7,6 @@
                         <q-toolbar class="bg-primary text-white shadow-1">
                             <q-toolbar-title>Following & Followers</q-toolbar-title>
                         </q-toolbar>
-
                         <q-list bordered>
                             <q-item @click="selectUser(contact)" v-for="contact in contacts" :key="contact._id"
                                 class="q-my-sm" clickable v-ripple>
@@ -60,10 +59,6 @@
             </div>
         </div>
     </q-page>
-
-
-
-
 </template>
 
 <script>

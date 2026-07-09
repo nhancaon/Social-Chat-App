@@ -1,0 +1,51 @@
+name: BE Tests
+
+# Workflow này KHÔNG tự chạy khi push/PR.
+# Nó chỉ chạy khi có workflow khác "gọi" tới (reusable workflow).
+on:
+  workflow_call:
+
+jobs:
+  be-tests:
+    name: Backend Go Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15 # Tự hủy job nếu chạy quá 15 phút (tránh treo vô hạn)
+
+    services:
+      mongodb:
+        image: mongo:8.0
+        ports:
+          - 27017:27017
+        options: >-
+          --health-cmd "mongosh --eval 'db.runCommand({ping: 1})'"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          sparse-checkout: |
+            backend
+          sparse-checkout-cone-mode: true
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: "1.25"
+          cache: true # Bật cache Go module tích hợp sẵn
+          cache-dependency-path: backend/api/go.sum # Cache dựa theo file go.sum này
+
+      - name: Verify and download dependencies
+        run: |
+          go mod download   # Tải các dependency đã khai báo trong go.mod/go.sum
+          go mod verify      # Kiểm tra checksum, đảm bảo dependency không bị sửa đổi
+        working-directory: ./backend/api
+
+      - name: Run Go Tests
+        run: go test ./tests/... -v # -v = verbose, in chi tiết log từng test
+        working-directory: ./backend/api
+        env:
+          TEST_MONGO_URI: mongodb://localhost:27017
+          # JWT_SECRET không cần khai ở đây — code tự đọc từ .env.test
