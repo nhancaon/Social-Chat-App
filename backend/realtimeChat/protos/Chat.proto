@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+option go_package = "/protos";
+
+service RealtimeChatService {
+  rpc GetUserFollowingFollowers(UserID) returns (UsersIDsListResponse){}
+  rpc SendMessage(MessageRequest) returns (MessageResponse){}
+}
+
+message MessageRequest {
+  string content = 1;
+  string sender = 2;
+  string receiver = 3;
+}
+
+message MessageResponse {
+  string message = 1;
+}
+
+message UserID {
+  string userid = 1;
+}
+
+message UsersIDsListResponse {
+  repeated UserIDsList user_ids_lists = 1;
+}
+
+message UserIDsList {
+  repeated string user_ids_list = 1;
+}
+
+
+
+
+
+
+
+
+

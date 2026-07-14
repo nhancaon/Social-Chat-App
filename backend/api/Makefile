@@ -11,3 +11,6 @@ swag-init: clear-swag
 # run all tests
 test:
 	go test ./tests/... -v
+
+proto:
+	protoc --go_out=. --go-grpc_out=. protos/*.proto
