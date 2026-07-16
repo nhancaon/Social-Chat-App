@@ -16,9 +16,14 @@ export default {
   name: 'MainLayout',
   methods: {
     ...mapActions('auth', ['initAuth']),
+    ...mapActions('realTimeNotify', ['connectToNotifications', "disconnectFromNotifications"]),
   },
   async mounted() {
     await this.initAuth()
+    await this.connectToNotifications()
+  },
+  beforeUnmount() {
+    this.disconnectFromNotifications()
   },
   components: { NavBar },
 }

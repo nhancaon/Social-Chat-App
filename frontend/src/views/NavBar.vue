@@ -57,12 +57,15 @@ export default {
   data() {
     return {
       searchText: '',
+      unReadedMessages: 0,
     }
   },
   computed: {
-    ...mapGetters('auth', ['GetAuthData']),
+    ...mapGetters('auth', ['GetAuthData', 'GetUserData']),
     ...mapGetters('chat', ['getUnreadMsgCount']),
     ...mapGetters('notification', ['getUnreadNotificationCount']),
+    ...mapGetters('realTimeNotify', ['getNotificationCount']),
+
     isLoggedIn() {
       return !!this.GetAuthData?.result
     },
@@ -70,8 +73,20 @@ export default {
       return this.GetAuthData?.result
     },
   },
+  watch: {
+    getNotificationCount(newVal, oldVal) {
+      if (newVal > oldVal) {
+        this.GetUnReadNotifyNum(this.GetUserData()?.result._id)
+      }
+    },
+    $route() {
+      this.GetUnReadNotifyNum(this.GetUserData()?.result._id)
+    }
+  },
   methods: {
     ...mapActions('auth', ['logout']),
+    ...mapActions('realTimeNotify', ['disconnectFromNotifications']),
+    ...mapActions('notification', ['GetUnReadNotifyNum']),
 
     GoSearch() {
       if (!this.searchText) return
@@ -82,8 +97,14 @@ export default {
       this.$router.push(`/Profile/${id}`)
     },
     async LogUserOut() {
-      await this.logout()
-      this.$router.push('/Auth')
+      try {
+        await this.logout()
+      } catch (error) {
+        console.log('Logout error:', error)
+      } finally {
+        await this.disconnectFromNotifications()
+        this.$router.push('/Auth')
+      }
     },
     GoToNotification() {
       this.$router.push('/Notification')
@@ -91,10 +112,16 @@ export default {
     GoToChat() {
       this.$router.push('/Chat')
     },
-
-
   },
+  async mounted() {
+    if (!this.isLoggedIn) return
 
+    try {
+      await this.GetUnReadNotifyNum(this.GetUserData()?.result._id)
+    } catch (error) {
+      console.log('Lỗi lấy số liệu ban đầu:', error)
+    }
+  },
 }
 </script>
 

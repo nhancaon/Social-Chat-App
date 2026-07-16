@@ -92,12 +92,12 @@ func (s *Server) SendMessage(ctx context.Context, req *pb.MessageRequest) (*pb.M
 		return nil, fmt.Errorf("failed to save message to db")
 	}
 
-	unreadedmessagesSchema := database.DB.Collection("unReadedmessages")
+	unreadedmessagesSchema := database.DB.Collection("unReadmessages")
 
 	filter := bson.M{"mainUserid": req.GetReceiver(), "otherUserid": req.GetSender()}
 	update := bson.M{
-		"$inc": bson.M{"numOfUnreadedMessages": 1},
-		"$set": bson.M{"isReaded": false},
+		"$inc": bson.M{"numOfUnreadMessages": 1},
+		"$set": bson.M{"isReadMessage": false},
 	}
 	opts := options.Update().SetUpsert(true)
 

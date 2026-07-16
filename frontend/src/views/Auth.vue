@@ -62,7 +62,7 @@ export default {
   },
   methods: {
     ...mapActions('auth', ['signin', 'signup']),
-
+    ...mapActions('realTimeNotify', ['connectToNotifications']),
     notifyError(message) {
       this.$q.notify({
         icon: 'eva-alert-circle-outline',
@@ -110,6 +110,7 @@ export default {
           password: this.signinForm.password,
         })
         this.notifySuccess('Successfully signed in')
+        this.connectToNotifications()
         this.$router.push('/')
       } catch (error) {
         const message =
@@ -127,6 +128,7 @@ export default {
       try {
         await this.signup(this.signupForm)
         this.notifySuccess('Successfully signed up')
+        this.connectToNotifications()
         this.$router.push('/')
       } catch (error) {
         const message = error?.response?.data?.message || 'Sign up failed'

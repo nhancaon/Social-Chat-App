@@ -4,7 +4,9 @@ import Users from './Users'
 import Posts from './Posts'
 import Notification from './Notification'
 import Chat from './Chat'
+import RealTimeNotify from './RealTimeNotify'
 import resetOnLogout from './plugins/resetOnLogout'
+
 
 export default createStore({
   modules: {
@@ -13,6 +15,7 @@ export default createStore({
     posts: Posts,
     notification: Notification,
     chat: Chat,
+    realTimeNotify: RealTimeNotify,
   },
   plugins: [resetOnLogout],
 })
