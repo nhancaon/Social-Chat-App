@@ -38,7 +38,7 @@ func main() {
 		// trusting it. As written, anyone can connect as any user id.
 
 		if manager == nil {
-			return
+			log.Printf("ConnectionManager is nil")
 		}
 
 		manager.AddConnection(id, c)

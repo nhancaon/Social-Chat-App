@@ -5,9 +5,9 @@ import "time"
 type Notification struct {
 	ID        string    `json:"_id"`
 	Details   string    `json:"details"`
-	MainUID   string    `json:"mainuid"`
-	TargetID  string    `json:"targetid"`
-	IsRead    bool      `json:"isread"`
+	MainUID   string    `json:"mainUid"`
+	TargetID  string    `json:"targetId"`
+	IsRead    bool      `json:"isRead"`
 	CreatedAt time.Time `json:"createdAt"`
 	User      User      `json:"user"`
 }

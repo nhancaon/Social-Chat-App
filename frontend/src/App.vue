@@ -10,20 +10,34 @@
 
 <script>
 import NavBar from '@/views/NavBar.vue'
-import { mapActions } from 'vuex'
+import { mapActions, mapGetters } from 'vuex'
 
 export default {
   name: 'MainLayout',
   methods: {
     ...mapActions('auth', ['initAuth']),
     ...mapActions('realTimeNotify', ['connectToNotifications', "disconnectFromNotifications"]),
+    ...mapActions('realTimeChat', ['createChatConnection', 'stopConnectionToChat']),
+    handleVisibilityChange() {
+      if (!document.hidden) {
+        // Tab đang được hiển thị
+        if (this.isAuthenticated && !this.isChatConnected) {
+          console.log('🔄 Reconnecting WebSocket after tab focus');
+          this.createChatConnection();
+          this.connectToNotifications();
+        }
+      }
+    },
   },
-  async mounted() {
-    await this.initAuth()
-    await this.connectToNotifications()
+  computed: {
+    ...mapGetters('auth', ['isAuthenticated']),
+  },
+  mounted() {
+    document.addEventListener('visibilitychange', this.handleVisibilityChange);
   },
   beforeUnmount() {
-    this.disconnectFromNotifications()
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+    if (this.reconnectInterval) clearInterval(this.reconnectInterval);
   },
   components: { NavBar },
 }

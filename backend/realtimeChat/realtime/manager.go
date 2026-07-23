@@ -108,7 +108,11 @@ func (cm *ConnectionManager) AddConnection(userID string, conn *websocket.Conn) 
 
 func (cm *ConnectionManager) RemoveConnection(userID string) {
 	cm.lock.Lock()
-
+	if cm == nil {
+		log.Printf("RemoveConnection called on nil ConnectionManager for %s", userID)
+		return
+	}
+	log.Printf("RemoveConnection called for user %s", userID)
 	delete(cm.connections, userID)
 	delete(cm.onlineFriends, userID)
 

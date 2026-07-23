@@ -33,9 +33,7 @@ func (s *notificationServer) SendNotification(ctx context.Context, req *pb.Notif
 	s.wsMu.Unlock()
 
 	if !connected {
-		// User has no active WebSocket connection right now.
-		// The notification is still saved by the caller (e.g. the main API),
-		// so it will show up next time the user fetches their notification list.
+		log.Printf("[DEBUG] No active connection for user %s (current connected users: %v)", req.MainUid, s.ws)
 		return &emptypb.Empty{}, nil
 	}
 
@@ -52,11 +50,11 @@ func (s *notificationServer) SendNotification(ctx context.Context, req *pb.Notif
 		},
 	}
 
-	// NOTE: This is the only goroutine that ever writes to a given
-	// connection (the WebSocket handler in realtime/ only reads),
-	// so this WriteJSON call is safe without an extra per-connection lock.
+	log.Printf("[DEBUG] Found connection for %s, writing...", req.MainUid)
 	if err := conn.WriteJSON(notification); err != nil {
-		log.Printf("Error sending notification to websocket client %s: %v", req.MainUid, err)
+		log.Printf("[DEBUG] WriteJSON failed: %v", err)
+	} else {
+		log.Printf("[DEBUG] WriteJSON succeeded")
 	}
 
 	return &emptypb.Empty{}, nil

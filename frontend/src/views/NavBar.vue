@@ -50,44 +50,39 @@
 </template>
 
 <script>
-import { mapGetters, mapActions } from 'vuex'
+import { mapGetters, mapActions } from 'vuex';
 
 export default {
   name: 'NavBar',
   data() {
-    return {
-      searchText: '',
-      unReadedMessages: 0,
-    }
+    return { searchText: '' };
   },
   computed: {
-    ...mapGetters('auth', ['GetAuthData', 'GetUserData']),
+    ...mapGetters('auth', ['GetAuthData', 'currentUserId']),
     ...mapGetters('chat', ['getUnreadMsgCount']),
     ...mapGetters('notification', ['getUnreadNotificationCount']),
-    ...mapGetters('realTimeNotify', ['getNotificationCount']),
+    ...mapGetters('realTimeChat', ['getMessageReceivedTick']),
 
     isLoggedIn() {
-      return !!this.GetAuthData?.result
+      return !!this.GetAuthData?.result;
     },
     currentUser() {
-      return this.GetAuthData?.result
-    },
+      return this.GetAuthData?.result;
+    }
   },
   watch: {
-    getNotificationCount(newVal, oldVal) {
-      if (newVal > oldVal) {
-        this.GetUnReadNotifyNum(this.GetUserData()?.result._id)
+    getMessageReceivedTick() {
+      if (this.currentUserId) {
+        this.GetUnreadMessageNum(this.currentUserId);
       }
     },
-    $route() {
-      this.GetUnReadNotifyNum(this.GetUserData()?.result._id)
-    }
   },
   methods: {
     ...mapActions('auth', ['logout']),
-    ...mapActions('realTimeNotify', ['disconnectFromNotifications']),
+    ...mapActions('realTimeNotify', ['connectToNotifications', 'disconnectFromNotifications']),
+    ...mapActions('realTimeChat', ['createChatConnection', 'stopConnectionToChat']),
     ...mapActions('notification', ['GetUnReadNotifyNum']),
-
+    ...mapActions('chat', ['GetUnreadMessageNum']),
     GoSearch() {
       if (!this.searchText) return
       this.$router.push({ path: '/Search', query: { search: this.searchText } })
@@ -98,12 +93,11 @@ export default {
     },
     async LogUserOut() {
       try {
-        await this.logout()
-      } catch (error) {
-        console.log('Logout error:', error)
+        await this.stopConnectionToChat();
+        await this.disconnectFromNotifications();
       } finally {
-        await this.disconnectFromNotifications()
-        this.$router.push('/Auth')
+        await this.logout();
+        this.$router.push('/Auth');
       }
     },
     GoToNotification() {
@@ -112,17 +106,30 @@ export default {
     GoToChat() {
       this.$router.push('/Chat')
     },
-  },
-  async mounted() {
-    if (!this.isLoggedIn) return
-
-    try {
-      await this.GetUnReadNotifyNum(this.GetUserData()?.result._id)
-    } catch (error) {
-      console.log('Lỗi lấy số liệu ban đầu:', error)
+    handleVisibilityChange() {
+      if (document.visibilityState === 'visible' && this.isLoggedIn) {
+        this.connectToNotifications();
+      }
     }
   },
-}
+  async mounted() {
+    if (!this.isLoggedIn) return;
+    const id = this.currentUserId;
+    if (id) {
+      try {
+        await this.GetUnReadNotifyNum(id);
+        await this.GetUnreadMessageNum(id);
+      } catch (error) {
+        console.log('Lỗi lấy số liệu ban đầu:', error);
+      }
+      await this.connectToNotifications();
+      await this.createChatConnection();
+      document.addEventListener('visibilitychange', this.handleVisibilityChange);
+    }
+  }, beforeUnmount() {
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+  },
+};
 </script>
 
 <style lang="sass">

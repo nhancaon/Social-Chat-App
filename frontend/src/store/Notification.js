@@ -1,52 +1,57 @@
-import * as api from '../api/index.js'
+import * as api from '../api/index.js';
 
 function initialState() {
   return {
-    unreadNotificationCount: 0,
-  }
+    list: [],
+    unreadCount: 0,
+  };
 }
 
 const Notification = {
   namespaced: true,
   state: initialState(),
   getters: {
-    getUnreadNotificationCount: (state) => state.unreadNotificationCount,
+    getNotifications: (state) => state.list,
+    getUnreadNotificationCount: (state) => state.unreadCount,
   },
   mutations: {
-    SET_UNREAD_NOTIFICATION_COUNT(state, payload) {
-      state.unreadNotificationCount = payload
+    SET_NOTIFICATIONS(state, notifications) {
+      state.list = notifications;
+      state.unreadCount = notifications.filter(n => !n.isRead).length;
+    },
+    ADD_NOTIFICATION(state, notification) {
+      state.list.unshift(notification);
+      if (!notification.isRead) state.unreadCount++;
+    },
+    MARK_ALL_READ(state) {
+      state.list.forEach(n => n.isRead = true);
+      state.unreadCount = 0;
     },
     RESET_STATE(state) {
-      Object.assign(state, initialState())
-    },
+      Object.assign(state, initialState());
+    }
   },
   actions: {
-    // id ở đây là userId
-    async GetUnReadNotifyNum({ commit }, id) {
+    async GetUnReadNotifyNum({ commit }, userId) {
       try {
-        const { data } = await api.GetNotificationForUser(id)
-        const unreadCount = data.notifications.filter(el => !el.isRead).length
-
-        commit('SET_UNREAD_NOTIFICATION_COUNT', unreadCount)
-        return data.notifications
+        const { data } = await api.GetNotificationForUser(userId);
+        commit('SET_NOTIFICATIONS', data.notifications || []);
+        return data.notifications;
       } catch (error) {
-        console.error('GetUnReadNotifyNum error:', error)
-        throw error
+        console.error('GetUnReadNotifyNum error:', error);
+        throw error;
       }
     },
-
-    // id ở đây cũng là userId (API mark TẤT CẢ thông báo của user là đã đọc)
-    async MarkAllNotifyAsReaded({ commit }, id) {
+    async MarkAllNotifyAsReaded({ commit }, userId) {
       try {
-        const { data } = await api.MarkNotificationAsReaded(id)
-        commit('SET_UNREAD_NOTIFICATION_COUNT', 0)
-        return data
+        await api.MarkNotificationAsReaded(userId);
+        commit('MARK_ALL_READ');
       } catch (error) {
-        console.error('MarkAllNotifyAsReaded error:', error)
-        throw error
+        console.error('MarkAllNotifyAsReaded error:', error);
+        throw error;
       }
     }
   }
-}
+};
 
 export default Notification;

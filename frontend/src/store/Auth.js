@@ -98,10 +98,10 @@ const Auth = {
       }
     },
 
-    logout({ commit, dispatch }) {
+    logout({ commit }) {
       commit('LOGOUT')
-      dispatch('chat/RESET_STATE', null, { root: true })
-      dispatch('notification/RESET_STATE', null, { root: true })
+      commit('chat/RESET_STATE', null, { root: true })
+      commit('notification/RESET_STATE', null, { root: true })
     },
   },
 }

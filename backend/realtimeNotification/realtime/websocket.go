@@ -3,6 +3,7 @@ package realtime
 import (
 	"log"
 	"sync"
+	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
@@ -30,10 +31,38 @@ func NewApp(ws map[string]*websocket.Conn, wsMu *sync.Mutex) *fiber.App {
 		defer func() {
 			log.Printf("User %s disconnected", userID)
 			wsMu.Lock()
-			delete(ws, userID)
+			if existing, ok := ws[userID]; ok && existing == c {
+				delete(ws, userID)
+			}
 			wsMu.Unlock()
 			c.Close()
 		}()
+
+		c.SetReadDeadline(time.Now().Add(60 * time.Second))
+		c.SetPongHandler(func(string) error {
+			c.SetReadDeadline(time.Now().Add(60 * time.Second))
+			return nil
+		})
+
+		done := make(chan struct{})
+		go func() {
+			ticker := time.NewTicker(25 * time.Second)
+			defer ticker.Stop()
+			for {
+				select {
+				case <-ticker.C:
+					wsMu.Lock()
+					err := c.WriteMessage(websocket.PingMessage, nil)
+					wsMu.Unlock()
+					if err != nil {
+						return
+					}
+				case <-done:
+					return
+				}
+			}
+		}()
+		defer close(done)
 
 		for {
 			if _, _, err := c.ReadMessage(); err != nil {
