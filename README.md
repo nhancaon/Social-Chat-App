@@ -2,7 +2,7 @@
 
 [![Build](https://img.shields.io/badge/build-unknown-lightgrey)]() [![Version](https://img.shields.io/badge/version-0.1.0-blue)]() [![License](https://img.shields.io/badge/license-please%20specify-red)]()
 
-Social Chat App is a lightweight social networking platform built with Go, Vue 3, MongoDB, and Docker. It supports user authentication, post creation, likes/comments, follow relationships, real-time chat, and notification delivery.
+Social Chat App is a lightweight social networking platform built with Go, Vue 3, MongoDB, and Docker. It supports user authentication, post creation, likes/comments, follow relationships, real-time chat, and notification delivery using both WebSocket and gRPC.
 
 ## Table of Contents
 
@@ -34,7 +34,7 @@ Social Chat App is a lightweight social networking platform built with Go, Vue 3
 - Social post flow: create, view, update, delete, like, and comment
 - User profile and follow/unfollow actions
 - Search for users and posts
-- Real-time chat between users
+- Real-time chat between users via WebSocket and gRPC
 - Real-time notifications for likes, comments, and follow events
 - REST API with Swagger documentation
 - Dockerized setup for quick local deployment
@@ -45,6 +45,7 @@ Social Chat App is a lightweight social networking platform built with Go, Vue 3
 | --- | --- |
 | Frontend | Vue 3, Quasar, Vue Router, Vuex, Axios |
 | Backend | Go, Fiber v2, JWT, Swagger, gRPC |
+| Real-time | WebSocket, gRPC |
 | Database | MongoDB |
 | Testing | Cypress, Go test, Testify |
 | DevOps | Docker, Docker Compose |
