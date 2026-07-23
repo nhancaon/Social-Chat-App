@@ -59,7 +59,6 @@ export default {
       this.editMode = !this.editMode
     },
     updateUserLocal(payload) {
-      // payload = { data: update.data } từ EditProfile emit lên
       this.userData = { ...this.userData, ...payload.data }
     },
     async fetchProfileData() {

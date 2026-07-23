@@ -17,10 +17,6 @@ const (
 	rpcTimeout     = 5 * time.Second
 )
 
-// sharedConn is a single, long-lived gRPC connection reused by every call
-// instead of dialing a brand-new connection per request. grpc.ClientConn is
-// safe for concurrent use, and internally multiplexes RPCs over HTTP/2, so
-// there's no need (and real cost) to open/close a connection per call.
 var (
 	sharedConn     *grpc.ClientConn
 	sharedConnOnce sync.Once

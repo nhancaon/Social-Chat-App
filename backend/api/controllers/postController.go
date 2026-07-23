@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"Server/database"
+	"Server/gapi"
 	"Server/models"
 	"context"
 	"math"
@@ -475,10 +476,16 @@ func CommentPost(c *fiber.Ctx) error {
 					User:      models.User{Name: user.Name, Avatar: user.ImageUrl},
 					CreatedAt: time.Now(),
 				}
-				if _, err := NotificationSchema.InsertOne(ctx, notification); err != nil {
-					// log and continue, the comment itself already succeeded
-					// (use your logger here if available)
+				res, err := NotificationSchema.InsertOne(ctx, notification)
+				if err != nil {
+					return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+						"message": "Failed to create notification",
+						"error":   err.Error(),
+					})
 				}
+				notification.ID = res.InsertedID.(primitive.ObjectID)
+				//call grpc function to send notification to the user
+				gapi.SendNotification(notification)
 			}
 		}
 	}
@@ -560,9 +567,17 @@ func LikePost(c *fiber.Ctx) error {
 						User:      models.User{Name: user.Name, Avatar: user.ImageUrl},
 						CreatedAt: time.Now(),
 					}
-					if _, err := NotificationSchema.InsertOne(ctx, notification); err != nil {
-						// log and continue, the like itself already succeeded
+
+					res, err := NotificationSchema.InsertOne(ctx, notification)
+					if err != nil {
+						return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+							"message": "Failed to create notification",
+							"error":   err.Error(),
+						})
 					}
+					notification.ID = res.InsertedID.(primitive.ObjectID)
+					//call grpc function to send notification to the user
+					gapi.SendNotification(notification)
 				}
 			}
 		}

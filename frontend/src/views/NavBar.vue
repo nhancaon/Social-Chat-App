@@ -50,29 +50,39 @@
 </template>
 
 <script>
-import { mapGetters, mapActions } from 'vuex'
+import { mapGetters, mapActions } from 'vuex';
 
 export default {
   name: 'NavBar',
   data() {
-    return {
-      searchText: '',
-    }
+    return { searchText: '' };
   },
   computed: {
-    ...mapGetters('auth', ['GetAuthData']),
+    ...mapGetters('auth', ['GetAuthData', 'currentUserId']),
     ...mapGetters('chat', ['getUnreadMsgCount']),
     ...mapGetters('notification', ['getUnreadNotificationCount']),
+    ...mapGetters('realTimeChat', ['getMessageReceivedTick']),
+
     isLoggedIn() {
-      return !!this.GetAuthData?.result
+      return !!this.GetAuthData?.result;
     },
     currentUser() {
-      return this.GetAuthData?.result
+      return this.GetAuthData?.result;
+    }
+  },
+  watch: {
+    getMessageReceivedTick() {
+      if (this.currentUserId) {
+        this.GetUnreadMessageNum(this.currentUserId);
+      }
     },
   },
   methods: {
     ...mapActions('auth', ['logout']),
-
+    ...mapActions('realTimeNotify', ['connectToNotifications', 'disconnectFromNotifications']),
+    ...mapActions('realTimeChat', ['createChatConnection', 'stopConnectionToChat']),
+    ...mapActions('notification', ['GetUnReadNotifyNum']),
+    ...mapActions('chat', ['GetUnreadMessageNum']),
     GoSearch() {
       if (!this.searchText) return
       this.$router.push({ path: '/Search', query: { search: this.searchText } })
@@ -82,8 +92,13 @@ export default {
       this.$router.push(`/Profile/${id}`)
     },
     async LogUserOut() {
-      await this.logout()
-      this.$router.push('/Auth')
+      try {
+        await this.stopConnectionToChat();
+        await this.disconnectFromNotifications();
+      } finally {
+        await this.logout();
+        this.$router.push('/Auth');
+      }
     },
     GoToNotification() {
       this.$router.push('/Notification')
@@ -91,11 +106,30 @@ export default {
     GoToChat() {
       this.$router.push('/Chat')
     },
-
-
+    handleVisibilityChange() {
+      if (document.visibilityState === 'visible' && this.isLoggedIn) {
+        this.connectToNotifications();
+      }
+    }
   },
-
-}
+  async mounted() {
+    if (!this.isLoggedIn) return;
+    const id = this.currentUserId;
+    if (id) {
+      try {
+        await this.GetUnReadNotifyNum(id);
+        await this.GetUnreadMessageNum(id);
+      } catch (error) {
+        console.log('Lỗi lấy số liệu ban đầu:', error);
+      }
+      await this.connectToNotifications();
+      await this.createChatConnection();
+      document.addEventListener('visibilitychange', this.handleVisibilityChange);
+    }
+  }, beforeUnmount() {
+    document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+  },
+};
 </script>
 
 <style lang="sass">

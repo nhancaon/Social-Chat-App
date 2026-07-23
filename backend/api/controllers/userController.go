@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"Server/database"
+	"Server/gapi"
 	"Server/models"
 	"context"
 	"slices"
@@ -231,12 +232,18 @@ func FollowingUser(c *fiber.Ctx) error {
 			User:      models.User{Name: SecondUser.Name, Avatar: SecondUser.ImageUrl},
 			CreatedAt: time.Now(),
 		}
-		if _, err := NotificationSchema.InsertOne(ctx, notification); err != nil {
+		res, err := NotificationSchema.InsertOne(ctx, notification)
+		if err != nil {
 			return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 				"message": "Failed to create notification",
 				"error":   err.Error(),
 			})
 		}
+
+		//set the id field of the notification to the inserted id
+		notification.ID = res.InsertedID.(primitive.ObjectID)
+		//call grpc function to send notification to the user
+		gapi.SendNotification(notification)
 	}
 
 	// Lấy lại data mới nhất sau khi update

@@ -15,8 +15,8 @@ type User struct {
 type Notification struct {
 	ID        primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
 	Details   string             `json:"details" bson:"details"`
-	MainUID   string             `json:"mainuid" bson:"mainuid"`
-	TargetID  string             `json:"targetid" bson:"targetid"`
+	MainUID   string             `json:"mainUid" bson:"mainuid"`
+	TargetID  string             `json:"targetId" bson:"targetid"`
 	IsRead    bool               `json:"isRead" bson:"isRead"`
 	CreatedAt time.Time          `json:"createdAt" bson:"createdAt"`
 	User      User               `json:"user" bson:"user"`
