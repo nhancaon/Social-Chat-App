@@ -1,0 +1,15 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*" # chỉ chạy khi push tag dạng v1.0.0, v2.3.1...
+    branches:
+      - main # vẫn build khi push vào main để có tag "latest"
+
+jobs:
+  deploy:
+    uses: ./.github/workflows/docker-deployment.yml
+    secrets:
+      DOCKER_USER: ${{ secrets.DOCKER_USER }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}

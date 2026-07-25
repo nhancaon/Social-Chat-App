@@ -25,7 +25,10 @@ var (
 
 func getClient() (protos.RealtimeChatServiceClient, error) {
 	sharedConnOnce.Do(func() {
-		sharedConn, sharedConnErr = grpc.NewClient(grpcServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+		// sharedConn, sharedConnErr = grpc.NewClient(grpcServerAddr, grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+		//Devops docker compose usage
+		sharedConn, sharedConnErr = grpc.NewClient("SocialChatRealtimeChat:5001", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	})
 	if sharedConnErr != nil {
 		return nil, sharedConnErr

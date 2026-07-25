@@ -21,7 +21,11 @@ type Client struct {
 }
 
 func NewClient() (*Client, error) {
-	conn, err := grpc.NewClient(":8090", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	// conn, err := grpc.NewClient(":8090", grpc.WithTransportCredentials(insecure.NewCredentials()))
+
+	//Devops docker compose usage
+	conn, err := grpc.NewClient("SocialChatRealtimeNotification:8090", grpc.WithTransportCredentials(insecure.NewCredentials()))
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to notification service: %w", err)
 	}
