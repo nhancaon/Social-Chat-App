@@ -30,8 +30,6 @@ import Post from './Post.vue';
 import { mapActions, mapGetters } from 'vuex';
 
 export default {
-  // TODO: xác nhận route name thật trong router config - giữ "PostDetail" nếu router
-  // đang dùng đúng path này, hoặc đổi đồng bộ cả router + mọi nơi push route nếu sửa
   name: 'PostDetail',
   data() {
     return {

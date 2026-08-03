@@ -23,8 +23,18 @@
         <div class="text-h6">{{ localPost.title }}</div>
         <div class="text-subtitle1">{{ localPost.message }}</div>
         <q-separator />
-        <div class="text-subtitle4" v-for="(comment, index) in localPost.comments ?? []" :key="index">
-          {{ comment }}
+        <div
+          class="text-subtitle4 row items-center no-wrap q-gutter-x-xs"
+          v-for="comment in localPost.comments ?? []"
+          :key="comment._id"
+        >
+          <span class="text-bold">{{ comment.user?.name ?? 'Người dùng' }}:</span>
+          <span class="col ellipsis">{{ comment.value }}</span>
+          <q-btn
+            v-if="canDeleteComment(comment)"
+            dense flat round size="sm" color="grey" icon="eva-close-outline"
+            @click="deleteCommentByUser(comment._id)"
+          />
         </div>
 
         <q-btn @click="like" flat round color="red" :icon="userLike ? 'eva-heart' : 'eva-heart-outline'">
@@ -108,7 +118,13 @@ export default {
   },
   methods: {
     ...mapActions('users', ['GetUserByID']),
-    ...mapActions('posts', ['likePostByUser', 'commentPost', 'updatePost']),
+    ...mapActions('posts', ['likePostByUser', 'commentPost', 'deleteComment', 'updatePost']),
+
+    canDeleteComment(comment) {
+      const uid = this.GetAuthData?.result?._id
+      if (!uid) return false
+      return comment.userId === uid || this.localPost.creator === uid
+    },
 
     goToDetails() {
       this.$router.push({ path: `/PostDetail/${this.localPost?._id}` })
@@ -166,11 +182,20 @@ export default {
       this.form.text = ''
 
       try {
-        await this.commentPost({ value: commentText, id: this.localPost._id })
-        this.localPost.comments = [...(this.localPost.comments ?? []), commentText]
+        const updatedPost = await this.commentPost({ value: commentText, id: this.localPost._id })
+        this.localPost.comments = updatedPost?.comments ?? this.localPost.comments
       } catch (error) {
         console.error('addComment error:', error)
         this.form.text = commentText
+      }
+    },
+
+    async deleteCommentByUser(commentId) {
+      try {
+        const updatedPost = await this.deleteComment({ postId: this.localPost._id, commentId })
+        this.localPost.comments = updatedPost?.comments ?? this.localPost.comments
+      } catch (error) {
+        console.error('deleteComment error:', error)
       }
     },
 

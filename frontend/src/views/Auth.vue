@@ -1,8 +1,18 @@
 <template>
-  <q-page class="constrain q-pa-md">
-    <div class="row q-col-gutter-lg">
-      <div class="col-5">
-        <q-card class="my-card" style="width: 100%; padding: 10px;">
+  <q-page class="constrain q-pa-md auth-page">
+    <!-- tab switcher, mobile only -->
+    <div class="lt-sm q-mb-md">
+      <q-tabs v-model="activeTab" dense class="text-grey" active-color="primary" indicator-color="primary"
+        align="justify" narrow-indicator>
+        <q-tab name="signin" label="Sign in" />
+        <q-tab name="signup" label="Sign up" />
+      </q-tabs>
+      <q-separator />
+    </div>
+
+    <div class="row q-col-gutter-lg justify-center">
+      <div class="col-12 col-sm-5" v-show="$q.screen.gt.xs || activeTab === 'signin'">
+        <q-card class="auth-card">
           <h1 class="text-h6 text-center">Sign in</h1>
           <q-card-section>
             <form @submit.prevent.stop="Login" class="q-gutter-md">
@@ -10,26 +20,34 @@
               <q-input filled v-model="signinForm.password" label="Your Password *" hint="Password" type="password"
                 lazy-rules />
               <div>
-                <q-btn label="Sign in" type="submit" color="primary" :loading="signinLoading"
-                  :disable="signinLoading" />
+                <q-btn label="Sign in" type="submit" color="primary" class="full-width" :loading="signinLoading"
+                  :disable="signinLoading" rounded />
               </div>
             </form>
           </q-card-section>
         </q-card>
       </div>
-      <div class="col-7">
-        <q-card class="my-card" style="width: 100%; padding: 10px;">
+      <div class="col-12 col-sm-7" v-show="$q.screen.gt.xs || activeTab === 'signup'">
+        <q-card class="auth-card">
           <h1 class="text-h6 text-center">Sign up | Create New Account</h1>
           <q-card-section>
             <form @submit.prevent.stop="Register" class="q-gutter-md">
-              <q-input filled v-model="signupForm.firstName" label="Your First Name *" hint="First name" lazy-rules />
-              <q-input filled v-model="signupForm.lastName" label="Your Last Name *" hint="Last name" lazy-rules />
+              <div class="row q-col-gutter-sm">
+                <div class="col-12 col-sm-6">
+                  <q-input filled v-model="signupForm.firstName" label="Your First Name *" hint="First name"
+                    lazy-rules />
+                </div>
+                <div class="col-12 col-sm-6">
+                  <q-input filled v-model="signupForm.lastName" label="Your Last Name *" hint="Last name"
+                    lazy-rules />
+                </div>
+              </div>
               <q-input filled v-model="signupForm.email" label="Your Email *" hint="Email" lazy-rules />
               <q-input filled v-model="signupForm.password" type="password" label="Your Password *" hint="Password"
                 lazy-rules />
               <div>
-                <q-btn label="Create New Account" type="submit" color="positive" :loading="signupLoading"
-                  :disable="signupLoading" />
+                <q-btn label="Create New Account" type="submit" color="positive" class="full-width"
+                  :loading="signupLoading" :disable="signupLoading" rounded />
               </div>
             </form>
           </q-card-section>
@@ -46,6 +64,7 @@ export default {
   name: 'AuthView',
   data() {
     return {
+      activeTab: 'signin',
       signinLoading: false,
       signupLoading: false,
       signinForm: {
@@ -143,3 +162,15 @@ export default {
   },
 }
 </script>
+
+<style lang="sass" scoped>
+.auth-card
+  border-radius: 12px
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08)
+  padding: 10px
+  width: 100%
+
+@media (max-width: 599px)
+  .auth-page
+    padding: 12px 8px
+</style>

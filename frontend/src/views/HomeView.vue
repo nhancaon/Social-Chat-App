@@ -36,7 +36,20 @@
         <div v-if="posts.length === 0" class="text-grey text-center q-pa-xl">
           Chưa có bài viết nào
         </div>
+
         <Post v-for="post in posts" :key="post._id" :post="post" />
+
+        <div v-if="isFetchingMore" class="q-pa-lg text-center">
+          <q-spinner-hourglass color="primary" size="3em" />
+          <div class="q-mt-md text-grey-7">Đang tải thêm bài viết...</div>
+        </div>
+
+        <div v-if="hasReachedEnd && posts.length > 0" class="q-pa-md text-center text-grey-6">
+          <q-icon name="eva-inbox-outline" size="24px" />
+          <div class="q-mt-sm">Đã hết bài viết</div>
+        </div>
+
+        <div class="bottom-spacer"></div>
       </div>
 
       <div class="col-3">
@@ -44,11 +57,7 @@
       </div>
     </div>
 
-    <div class="q-pa-lg flex justify-center fixed-bottom">
-      <Add @created="fetchPosts" />
-      <q-pagination v-if="isLoaded && max > 0" v-model="current" color="primary" :max="max" :max-pages="5"
-        :ellipses="false" :boundary-numbers="false" />
-    </div>
+    <Add @created="onPostCreated" />
   </q-page>
 </template>
 
@@ -66,12 +75,9 @@ export default {
       current: 1,
       max: 0,
       posts: [],
-      isLoaded: false
-    }
-  },
-  watch: {
-    current() {
-      this.fetchPosts()
+      isLoaded: false,
+      isFetchingMore: false,
+      hasReachedEnd: false
     }
   },
   components: {
@@ -82,22 +88,76 @@ export default {
   },
   methods: {
     ...mapActions('posts', ['getPosts']),
+
+    // Load trang đầu tiên hoặc reset danh sách
     async fetchPosts() {
       this.isLoaded = false
       try {
         const data = await this.getPosts(this.current)
         this.posts = data?.data ?? []
         this.max = data?.numberOfPages ?? 0
+        this.hasReachedEnd = this.current >= this.max
       } catch (error) {
         console.error('fetchPosts error:', error)
         this.posts = []
+        this.hasReachedEnd = false
       } finally {
         this.isLoaded = true
       }
+    },
+
+    // Nối thêm bài viết khi scroll xuống cuối
+    async fetchMorePosts() {
+      if (this.isFetchingMore || this.hasReachedEnd || this.current >= this.max) {
+        return
+      }
+
+      this.isFetchingMore = true
+      this.current++
+
+      try {
+        const data = await this.getPosts(this.current)
+        this.posts = [...this.posts, ...(data?.data ?? [])]
+        this.hasReachedEnd = this.current >= this.max
+      } catch (error) {
+        console.error('fetchMorePosts error:', error)
+        this.current--
+      } finally {
+        this.isFetchingMore = false
+      }
+    },
+
+    handleScroll() {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+
+      if (scrollTop + windowHeight >= documentHeight - 200) {
+        this.fetchMorePosts()
+      }
+    },
+
+    async onPostCreated() {
+      this.current = 1
+      this.hasReachedEnd = false
+      await this.fetchPosts()
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     }
   },
-  mounted() {
-    this.fetchPosts()
+  async mounted() {
+    await this.fetchPosts()
+    window.addEventListener('scroll', this.handleScroll, { passive: true })
   },
+  beforeUnmount() {
+    window.removeEventListener('scroll', this.handleScroll)
+  }
 }
 </script>
+
+<style scoped>
+.q-page {
+  scroll-behavior: smooth;
+  position: relative;
+  min-height: 100vh;
+}
+</style>

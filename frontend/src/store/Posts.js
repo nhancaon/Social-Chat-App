@@ -99,8 +99,8 @@ const Posts = {
     async createPost({ commit }, post) {
       try {
         const { data } = await api.createPost(post);
-        commit('ADD_POST', data);
-        return data;
+        commit('ADD_POST', data.data);
+        return data.data;
       } catch (error) {
         console.error('createPost error:', error);
         throw error;
@@ -119,9 +119,9 @@ const Posts = {
         };
 
         const { data } = await api.updatePost(payload.id, postData);
-        commit('UPDATE_POST_IN_LIST', data);
-        commit('SET_POST', data);
-        return data;
+        commit('UPDATE_POST_IN_LIST', data.data);
+        commit('SET_POST', data.data);
+        return data.data;
       } catch (error) {
         console.error('updatePost error:', error);
         throw error;
@@ -131,8 +131,8 @@ const Posts = {
     async likePostByUser({ commit }, id) {
       try {
         const { data } = await api.likePost(id);
-        commit('UPDATE_POST_IN_LIST', data);
-        return data;
+        commit('UPDATE_POST_IN_LIST', data.data);
+        return data.data;
       } catch (error) {
         console.error('likePostByUser error:', error);
         throw error;
@@ -142,10 +142,21 @@ const Posts = {
     async commentPost({ commit }, form) {
       try {
         const { data } = await api.comment(form.value, form.id);
-        commit('UPDATE_POST_IN_LIST', data);
-        return data;
+        commit('UPDATE_POST_IN_LIST', data.data);
+        return data.data;
       } catch (error) {
         console.error('commentPost error:', error);
+        throw error;
+      }
+    },
+
+    async deleteComment({ commit }, { postId, commentId }) {
+      try {
+        const { data } = await api.deleteComment(postId, commentId);
+        commit('UPDATE_POST_IN_LIST', data.data);
+        return data.data;
+      } catch (error) {
+        console.error('deleteComment error:', error);
         throw error;
       }
     },

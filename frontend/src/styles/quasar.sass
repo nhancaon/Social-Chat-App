@@ -1,3 +1,54 @@
 @import './quasar.variables.sass'
 @import '~quasar-styl'
 // @import '~quasar-addon-styl'
+
+
+.constrain
+    max-width: 975px
+    margin: 0 auto
+
+.chat-container
+    display: flex
+    flex-direction: column
+
+@media (max-width: 599px)
+    .constrain
+        max-width: 100%
+        padding: 8px
+    .chat-container
+        .user-list
+            width: 100%
+            margin-bottom: 16px
+
+            .q-toolbar
+                min-height: 48px
+            .q-item
+                padding: 12px
+                min-height: 56px
+    .chat-messages
+        width: 100%
+        .q-pa-md
+            padding: 8px
+            max-height: 300px !important
+            overflow-y: auto
+        .q-input
+            margin-top: 12px
+            .q-field__control
+                min-height: 48px
+    .q-btn
+        min-height: 44px
+        min-width: 44px
+    .q-avatar
+        width: 40px
+        height: 40px
+
+// desktop message
+@media (min-width: 600px)
+    .chat-container
+        flex-direction: row
+
+        .user-list
+            flex: 0 0 350px
+            margin-right: 20px
+        .chat-messages
+            flex: 1

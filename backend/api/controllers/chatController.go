@@ -153,7 +153,7 @@ func GetMsgsByNums(c *fiber.Ctx) error {
 	receiverFilter := bson.M{"sender": seconduid, "receiver": firstuid}
 	filter := bson.M{"$or": []bson.M{senderFilter, receiverFilter}}
 
-	const LIMIT = 2
+	const LIMIT = 8
 
 	// pagination options: sort ascending so we don't need to reverse afterwards
 	findOptions := options.Find()
