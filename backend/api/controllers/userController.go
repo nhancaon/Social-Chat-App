@@ -5,13 +5,15 @@ import (
 	"Server/gapi"
 	"Server/models"
 	"context"
+	"log"
+	"math"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // GetUserBy ID
@@ -31,45 +33,73 @@ func GetUserByID(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	var user models.UserModel
-	var posts []models.PostModel
-
-	objId, _ := primitive.ObjectIDFromHex(c.Params("id"))
 	strID := c.Params("id")
-	// GET and REturn user posts
-	findOptions := options.Find()
-	postResult, err := PostSchema.Find(ctx, bson.M{"creator": strID}, findOptions)
+	objId, err := primitive.ObjectIDFromHex(strID)
 	if err != nil {
-		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
-			"error": err,
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "invalid user id",
 		})
 	}
 
-	defer postResult.Close(ctx)
-	for postResult.Next(ctx) {
-		var singlePost models.PostModel
-		postResult.Decode(&singlePost)
-		posts = append(posts, singlePost)
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	if page < 1 {
+		page = 1
 	}
+	const LIMIT = 3
 
-	if posts == nil {
-		posts = make([]models.PostModel, 0)
-	}
-	// get user data
-	userResult := UserSchema.FindOne(ctx, bson.M{"_id": objId})
-
-	if userResult.Err() != nil {
-		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
+	var user models.UserModel
+	if err := UserSchema.FindOne(ctx, bson.M{"_id": objId}).Decode(&user); err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
 			"success": false,
 			"message": "User Not found",
 		})
 	}
 
-	userResult.Decode(&user)
+	// posts are stored with creator as the hex string (not ObjectID), so we
+	// filter on strID here; same convention as GetAllPosts in postController.go
+	filter := bson.M{"creator": strID}
+
+	total, err := PostSchema.CountDocuments(ctx, filter)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	// reuse the same comments+user lookup pipeline as GetAllPosts, so a
+	// user's profile posts carry the same enriched comments shape as the feed
+	pipeline := []bson.M{
+		{"$match": filter},
+		{"$sort": bson.M{"_id": -1}},
+		{"$skip": (int64(page) - 1) * int64(LIMIT)},
+		{"$limit": int64(LIMIT)},
+		commentsLookupStage(),
+	}
+
+	cursor, err := PostSchema.Aggregate(ctx, pipeline)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+	defer cursor.Close(ctx)
+
+	var posts []models.PostModel
+	if err := cursor.All(ctx, &posts); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": err.Error(),
+		})
+	}
+
+	if posts == nil {
+		posts = make([]models.PostModel, 0)
+	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
-		"user":  user,
-		"posts": posts,
+		"user":          user,
+		"posts":         posts,
+		"currentPage":   page,
+		"numberOfPages": math.Ceil(float64(total) / float64(LIMIT)),
 	})
 }
 
@@ -131,6 +161,23 @@ func UpdateUser(c *fiber.Ctx) error {
 			})
 		}
 	}
+
+	// sync the actor snapshot on existing notifications (best-effort, doesn't
+	// fail the profile update if it errors); runs in the background with its
+	// own context since the request context is canceled as soon as we return
+	go func() {
+		bgCtx, bgCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer bgCancel()
+
+		var NotificationSchema = database.DB.Collection("notifications")
+		_, err := NotificationSchema.UpdateMany(bgCtx,
+			bson.M{"userid": userid.Hex()},
+			bson.M{"$set": bson.M{"user.name": user.Name, "user.avatar": user.ImageUrl}},
+		)
+		if err != nil {
+			log.Printf("failed to sync notifications for user %s: %v", userid.Hex(), err)
+		}
+	}()
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"data": updateUsser})
 
@@ -228,6 +275,7 @@ func FollowingUser(c *fiber.Ctx) error {
 		notification := models.Notification{
 			MainUID:   FirstUser.ID.Hex(),
 			TargetID:  SecondUser.ID.Hex(),
+			UserID:    SecondUser.ID.Hex(),
 			Details:   SecondUser.Name + " Start Following You!",
 			User:      models.User{Name: SecondUser.Name, Avatar: SecondUser.ImageUrl},
 			CreatedAt: time.Now(),

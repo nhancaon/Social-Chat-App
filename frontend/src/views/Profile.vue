@@ -17,6 +17,15 @@
         <div class="col-4" v-for="post in userPosts" :key="post._id">
           <Post :post="post" />
         </div>
+
+        <div v-if="isFetchingMore" class="col-12 q-pa-lg text-center">
+          <q-spinner-hourglass color="primary" size="3em" />
+        </div>
+
+        <div v-if="hasReachedEnd && userPosts.length > 0" class="col-12 q-pa-md text-center text-grey-6">
+          <q-icon name="eva-inbox-outline" size="24px" />
+          <div class="q-mt-sm">Đã hết bài viết</div>
+        </div>
       </template>
 
       <div v-else-if="!isLoading && !userData" class="col-12 text-center text-grey q-pa-xl">
@@ -40,7 +49,11 @@ export default {
       userData: null,
       isSameUser: false,
       editMode: false,
-      isLoading: false
+      isLoading: false,
+      current: 1,
+      max: 0,
+      isFetchingMore: false,
+      hasReachedEnd: false
     }
   },
   watch: {
@@ -63,14 +76,18 @@ export default {
     },
     async fetchProfileData() {
       this.isLoading = true
+      this.current = 1
+      this.hasReachedEnd = false
       try {
         const loggedInUserId = this.GetAuthData?.result?._id
         const profileId = this.$route.params.id
 
-        const data = await this.GetUserByID(profileId)
+        const data = await this.GetUserByID({ id: profileId, page: this.current })
 
         this.userData = data?.user ?? null
         this.userPosts = data?.posts ?? []
+        this.max = data?.numberOfPages ?? 0
+        this.hasReachedEnd = this.current >= this.max
         this.isSameUser = String(loggedInUserId) === String(profileId)
       } catch (error) {
         console.error('fetchProfileData error:', error)
@@ -79,10 +96,46 @@ export default {
       } finally {
         this.isLoading = false
       }
+    },
+
+    // nối thêm post cũ hơn khi scroll xuống cuối trang
+    async fetchMoreUserPosts() {
+      if (this.isFetchingMore || this.hasReachedEnd || this.current >= this.max) {
+        return
+      }
+
+      this.isFetchingMore = true
+      this.current++
+
+      try {
+        const profileId = this.$route.params.id
+        const data = await this.GetUserByID({ id: profileId, page: this.current })
+        this.userPosts = [...this.userPosts, ...(data?.posts ?? [])]
+        this.hasReachedEnd = this.current >= this.max
+      } catch (error) {
+        console.error('fetchMoreUserPosts error:', error)
+        this.current--
+      } finally {
+        this.isFetchingMore = false
+      }
+    },
+
+    handleScroll() {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop
+      const windowHeight = window.innerHeight
+      const documentHeight = document.documentElement.scrollHeight
+
+      if (scrollTop + windowHeight >= documentHeight - 200) {
+        this.fetchMoreUserPosts()
+      }
     }
   },
   mounted() {
     this.fetchProfileData()
+    window.addEventListener('scroll', this.handleScroll, { passive: true })
+  },
+  beforeUnmount() {
+    window.removeEventListener('scroll', this.handleScroll)
   },
   components: { ShowProfile, EditProfile, Post }
 }

@@ -22,7 +22,7 @@ import (
 // @Failure 400 {object} map[string]interface{}
 // @Security BearerAuth
 // @Router /notification/mark-notification-asreaded [get]
-func MarknotAsReaded(c *fiber.Ctx) error {
+func MarkNotAsReaded(c *fiber.Ctx) error {
 
 	userID, ok := c.Locals("userId").(string)
 	if !ok || userID == "" {
@@ -49,9 +49,9 @@ func MarknotAsReaded(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// exact match on mainuid, never use $regex for an ID lookup:
-	// regex does substring matching (not equality) and is vulnerable to
-	// regex injection if the value isn't escaped
+	// exact match on mainuid; never use $regex for an ID lookup, since regex
+	// does substring matching (not equality) and is vulnerable to regex
+	// injection if the value isn't escaped
 	filter := bson.M{"mainuid": id}
 	update := bson.M{"$set": bson.M{"isRead": true}}
 
@@ -107,7 +107,7 @@ func GetUserNotification(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// exact match on mainuid (see comment in MarknotAsReaded for why
+	// exact match on mainuid (see comment in MarkNotAsReaded for why
 	// this must never be a $regex match)
 	filter := bson.M{"mainuid": id}
 	findOptions := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})

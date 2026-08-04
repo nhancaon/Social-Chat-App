@@ -541,6 +541,7 @@ func CommentPost(c *fiber.Ctx) error {
 			notification := models.Notification{
 				MainUID:   post.Creator,
 				TargetID:  postid.Hex(),
+				UserID:    user.ID.Hex(),
 				Details:   user.Name + " Commented on your Post",
 				User:      models.User{Name: user.Name, Avatar: user.ImageUrl},
 				CreatedAt: time.Now(),
@@ -638,6 +639,7 @@ func LikePost(c *fiber.Ctx) error {
 					notification := models.Notification{
 						MainUID:   post.Creator,
 						TargetID:  post.ID.Hex(),
+						UserID:    user.ID.Hex(),
 						Details:   user.Name + " Liked your Post",
 						User:      models.User{Name: user.Name, Avatar: user.ImageUrl},
 						CreatedAt: time.Now(),

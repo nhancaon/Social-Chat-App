@@ -58,9 +58,11 @@ const Users = {
     },
 
     // dùng khi xem trang Profile của người khác
-    async GetUserByID({ commit }, id) {
+    // payload có thể là id (string) hoặc { id, page } khi cần phân trang post
+    async GetUserByID({ commit }, payload) {
+      const { id, page = 1 } = typeof payload === 'string' ? { id: payload } : payload
       try {
-        const { data } = await api.fetchUserProfile(id)
+        const { data } = await api.fetchUserProfile(id, page)
         commit('SET_VIEWED_PROFILE', data.user)
         return data
       } catch (error) {

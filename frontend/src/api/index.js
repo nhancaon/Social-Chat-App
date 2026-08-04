@@ -13,7 +13,7 @@ API.interceptors.request.use((req) => {
 // user end points 
 export const signIn = (formData) => API.post('user/signin', formData);
 export const signUp = (formData) => API.post('user/signup', formData);
-export const fetchUserProfile = (id) => API.get(`/user/getUser/${id}`);
+export const fetchUserProfile = (id, page = 1) => API.get(`/user/getUser/${id}?page=${page}`);
 export const getSugUser = (id) => API.get(`/user/getSug?id=${id}`);
 export const UpdateUser = (userData) => API.patch(`user/Update/${userData._id}`, userData);
 export const following = (id) => API.patch(`/user/${id}/following`);
