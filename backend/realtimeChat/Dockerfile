@@ -2,12 +2,18 @@
 FROM golang:1.26.4 AS builder
 WORKDIR /usr/src/app
 
-COPY backend/realtimeChat/go.mod ./
-COPY backend/realtimeChat/go.sum ./
+# Shared gRPC contracts (single source of truth, used by all backend services
+# via a "replace SocialChatProtos => ../protos" in each service's go.mod)
+COPY backend/protos ./backend/protos
+
+COPY backend/realtimeChat/go.mod backend/realtimeChat/go.sum ./backend/realtimeChat/
+WORKDIR /usr/src/app/backend/realtimeChat
 RUN go mod download
 
-COPY backend/realtimeChat .
-RUN CGO_ENABLED=0 GOOS=linux go build -o main .
+WORKDIR /usr/src/app
+COPY backend/realtimeChat ./backend/realtimeChat
+WORKDIR /usr/src/app/backend/realtimeChat
+RUN CGO_ENABLED=0 GOOS=linux go build -o /usr/src/app/main .
 
 # Stage 2: Run (image nhẹ hơn, không cần toàn bộ toolchain Go)
 FROM alpine:latest

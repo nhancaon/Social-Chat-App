@@ -12,5 +12,5 @@ swag-init: clear-swag
 test:
 	go test ./tests/... -v
 
-proto:
-	protoc --go_out=. --go-grpc_out=. protos/*.proto
+# proto contracts now live in ../protos (shared by all backend services) —
+# see backend/protos/Makefile to regenerate them

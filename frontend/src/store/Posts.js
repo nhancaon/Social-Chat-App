@@ -87,7 +87,7 @@ const Posts = {
     // dùng chung cho tìm kiếm users & posts
     async getPostsUsersBySearch({ commit }, searchData) {
       try {
-        const { data } = await api.fetchPostsUsersbySearch(searchData);
+        const { data } = await api.fetchPostsUsersBySearch(searchData);
         commit('SET_SEARCH', data);
         return data;
       } catch (error) {

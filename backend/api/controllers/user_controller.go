@@ -312,9 +312,9 @@ func FollowingUser(c *fiber.Ctx) error {
 	})
 }
 
-// // GetSugUser Users
-// // @Summary Get Suggersted users
-// // @Description get suggested userses based on the current user's following list
+// // GetSuggestedUsers
+// // @Summary Get suggested users
+// // @Description get suggested users based on the current user's following list
 // // @Tags Users
 // // @Accept json
 // // @Produce json
@@ -323,7 +323,7 @@ func FollowingUser(c *fiber.Ctx) error {
 // // @Failure 400 {object} map[string]interface{}
 // // @security BearerAuth
 // // @Router /user/getSug [get]
-func GetSugUser(c *fiber.Ctx) error {
+func GetSuggestedUsers(c *fiber.Ctx) error {
 
 	var UserSchema = database.DB.Collection("users")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

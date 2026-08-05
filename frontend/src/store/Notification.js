@@ -34,7 +34,7 @@ const Notification = {
   actions: {
     async GetUnReadNotifyNum({ commit }, userId) {
       try {
-        const { data } = await api.GetNotificationForUser(userId);
+        const { data } = await api.getNotificationForUser(userId);
         commit('SET_NOTIFICATIONS', data.notifications || []);
         return data.notifications;
       } catch (error) {
@@ -44,7 +44,7 @@ const Notification = {
     },
     async MarkAllNotifyAsReaded({ commit }, userId) {
       try {
-        await api.MarkNotificationAsReaded(userId);
+        await api.markNotificationAsRead(userId);
         commit('MARK_ALL_READ');
       } catch (error) {
         console.error('MarkAllNotifyAsReaded error:', error);

@@ -9,7 +9,7 @@ import (
 
 func SetupUserRoutes(app *fiber.App) {
 	app.Get("/user/getUser/:id", controllers.GetUserByID)
-	app.Get("/user/getSug", controllers.GetSugUser)
+	app.Get("/user/getSug", controllers.GetSuggestedUsers)
 	app.Post("/user/batch", middleware.AuthMiddleware, controllers.GetUsersByIDs)
 	app.Patch("/user/Update/:id", middleware.AuthMiddleware, controllers.UpdateUser)
 	app.Patch("/user/:id/following", middleware.AuthMiddleware, controllers.FollowingUser)

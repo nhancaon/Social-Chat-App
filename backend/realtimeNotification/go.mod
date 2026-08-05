@@ -3,11 +3,14 @@ module realTimeNotification
 go 1.26.4
 
 require (
+	SocialChatProtos v0.0.0
 	github.com/gofiber/fiber/v2 v2.52.14
 	github.com/gofiber/websocket/v2 v2.2.1
 	google.golang.org/grpc v1.82.0
 	google.golang.org/protobuf v1.36.11
 )
+
+replace SocialChatProtos => ../protos
 
 require (
 	github.com/andybalholm/brotli v1.1.0 // indirect
@@ -22,8 +25,8 @@ require (
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasthttp v1.51.0 // indirect
 	github.com/valyala/tcplisten v1.0.0 // indirect
-	golang.org/x/net v0.53.0 // indirect
-	golang.org/x/sys v0.43.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/net v0.54.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478 // indirect
 )

@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"realTimeNotification/models"
-	pb "realTimeNotification/protos"
+	pb "SocialChatProtos"
 
 	"github.com/gofiber/websocket/v2"
 	"google.golang.org/grpc"

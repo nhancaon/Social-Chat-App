@@ -100,7 +100,7 @@ func SendMessage(c *fiber.Ctx) error {
 	})
 }
 
-// GetMsgsByNums
+// GetMessagesByPage
 // @Summary get messages by pagination
 // @Description Get messages between two users by pagination
 // @Tags Chat
@@ -113,7 +113,7 @@ func SendMessage(c *fiber.Ctx) error {
 // @Failure 400 {object} map[string]interface{}
 // @Security BearerAuth
 // @Router /chat/getmsgsbynums [get]
-func GetMsgsByNums(c *fiber.Ctx) error {
+func GetMessagesByPage(c *fiber.Ctx) error {
 
 	var MessageSchema = database.DB.Collection("messages")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -272,7 +272,7 @@ func GetUserUnreadMsg(c *fiber.Ctx) error {
 	})
 }
 
-// MarkMsgAsReaded
+// MarkMessageAsRead
 // @Summary mark messages as read for user
 // @Description mark messages as read for user, updates the record to isReadMessage=true, count=0
 // @Tags Chat
@@ -284,7 +284,7 @@ func GetUserUnreadMsg(c *fiber.Ctx) error {
 // @Failure 400 {object} map[string]interface{}
 // @Security BearerAuth
 // @Router /chat/mark-msg-asreaded [get]
-func MarkMsgAsReaded(c *fiber.Ctx) error {
+func MarkMessageAsRead(c *fiber.Ctx) error {
 
 	var UnReadedMsgSchema = database.DB.Collection("unReadmessages")
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)

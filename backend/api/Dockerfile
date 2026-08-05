@@ -2,12 +2,18 @@
 FROM golang:1.26.4 AS builder
 WORKDIR /usr/src/app
 
-COPY backend/api/go.mod ./
-COPY backend/api/go.sum ./
+# Shared gRPC contracts (single source of truth, used by all backend services
+# via a "replace SocialChatProtos => ../protos" in each service's go.mod)
+COPY backend/protos ./backend/protos
+
+COPY backend/api/go.mod backend/api/go.sum ./backend/api/
+WORKDIR /usr/src/app/backend/api
 RUN go mod download
 
-COPY backend/api .
-RUN CGO_ENABLED=0 GOOS=linux go build -o main .
+WORKDIR /usr/src/app
+COPY backend/api ./backend/api
+WORKDIR /usr/src/app/backend/api
+RUN CGO_ENABLED=0 GOOS=linux go build -o /usr/src/app/main .
 
 # Stage 2: Run (image nhẹ hơn, không cần toàn bộ toolchain Go)
 FROM alpine:latest

@@ -10,8 +10,8 @@ import (
 func SetupChatRoutes(app *fiber.App) {
 	chat := app.Group("/chat", middleware.AuthMiddleware)
 	chat.Post("/sendmessage", controllers.SendMessage)
-	chat.Get("/getmsgsbynums", controllers.GetMsgsByNums)
+	chat.Get("/getmsgsbynums", controllers.GetMessagesByPage)
 	chat.Get("/get-user-unreadmsg", controllers.GetUserUnreadMsg)
-	chat.Get("/mark-msg-asreaded", controllers.MarkMsgAsReaded)
+	chat.Get("/mark-msg-asreaded", controllers.MarkMessageAsRead)
 
 }

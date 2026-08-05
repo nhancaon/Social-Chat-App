@@ -3,6 +3,7 @@ module Server
 go 1.25.0
 
 require (
+	SocialChatProtos v0.0.0
 	github.com/go-playground/validator/v10 v10.30.3
 	github.com/gofiber/fiber/v2 v2.52.13
 	github.com/gofiber/swagger v1.1.1
@@ -15,6 +16,8 @@ require (
 	google.golang.org/grpc v1.82.0
 	google.golang.org/protobuf v1.36.11
 )
+
+replace SocialChatProtos => ../protos
 
 require (
 	github.com/KyleBanks/depth v1.2.1 // indirect

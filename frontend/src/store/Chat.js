@@ -24,7 +24,7 @@ const Chat = {
   actions: {
     async GetUnreadMessageNum({ commit }, uid) {
       try {
-        const { data } = await api.GetUnreadedMsgNum(uid)
+        const { data } = await api.getUnreadMessageCount(uid)
         commit('updateUnreadMsgCount', data.total)
         return data
       } catch (error) {
@@ -35,7 +35,7 @@ const Chat = {
 
     async GetChatMsgsBetweenTwoUsers(_, payload) {
       try {
-        const { data } = await api.GetMsgsBetweenTwoUsersByNum(
+        const { data } = await api.getMessagesByPage(
           payload.from,
           payload.firstuid,
           payload.seconduid
@@ -54,7 +54,7 @@ const Chat = {
           sender: payload.sender,
           receiver: payload.receiver,
         }
-        const { data } = await api.SendMessage(msg)
+        const { data } = await api.sendMessage(msg)
         return data
       } catch (error) {
         console.error('SendMessage error:', error)
@@ -64,7 +64,7 @@ const Chat = {
 
     async MarkMsgsAsReaded({ dispatch }, payload) {
       try {
-        const { data } = await api.markMsgAsReaded(payload.mainuid, payload.otheruid)
+        const { data } = await api.markMessageAsRead(payload.mainuid, payload.otheruid)
         await dispatch('GetUnreadMessageNum', payload.mainuid)
         return data
       } catch (error) {

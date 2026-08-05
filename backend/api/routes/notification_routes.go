@@ -8,6 +8,6 @@ import (
 )
 
 func SetupNotificationRoutes(app *fiber.App) {
-	app.Get("/notification/mark-notification-asreaded", middleware.AuthMiddleware, controllers.MarkNotAsReaded)
+	app.Get("/notification/mark-notification-asreaded", middleware.AuthMiddleware, controllers.MarkNotificationAsRead)
 	app.Get("/notification/:userid", middleware.AuthMiddleware, controllers.GetUserNotification)
 }

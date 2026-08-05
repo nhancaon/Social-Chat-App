@@ -72,7 +72,7 @@ const Users = {
     },
 
     async UpdateUserData({ commit }, userData) {
-      const { data } = await api.UpdateUser(userData)
+      const { data } = await api.updateUser(userData)
       commit('SET_CURRENT_USER', data.user) // update chính mình sau khi sửa profile
       return data
     },
@@ -83,7 +83,7 @@ const Users = {
     },
 
     async GetTheUserSug(_, id) {
-      const { data } = await api.getSugUser(id)
+      const { data } = await api.getSuggestedUsers(id)
       return data
     },
   },

@@ -4,7 +4,7 @@ import (
 	"Server/database"
 	_ "Server/docs"
 	"Server/gapi"
-	pb "Server/protos"
+	pb "SocialChatProtos"
 	"Server/routes"
 	"context"
 	"log"

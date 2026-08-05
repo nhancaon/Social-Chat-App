@@ -11,9 +11,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// MarkNotAsReaded
+// MarkNotificationAsRead
 // @Summary Mark notifications as read for a user
-// @Description MarkNotAsReaded
+// @Description MarkNotificationAsRead
 // @Tags Notifications
 // @Accept json
 // @Produce json
@@ -22,7 +22,7 @@ import (
 // @Failure 400 {object} map[string]interface{}
 // @Security BearerAuth
 // @Router /notification/mark-notification-asreaded [get]
-func MarkNotAsReaded(c *fiber.Ctx) error {
+func MarkNotificationAsRead(c *fiber.Ctx) error {
 
 	userID, ok := c.Locals("userId").(string)
 	if !ok || userID == "" {
@@ -107,7 +107,7 @@ func GetUserNotification(c *fiber.Ctx) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// exact match on mainuid (see comment in MarkNotAsReaded for why
+	// exact match on mainuid (see comment in MarkNotificationAsRead for why
 	// this must never be a $regex match)
 	filter := bson.M{"mainuid": id}
 	findOptions := options.Find().SetSort(bson.D{{Key: "createdAt", Value: -1}})

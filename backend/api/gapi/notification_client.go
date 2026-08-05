@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"Server/models"
-	pb "Server/protos"
+	pb "SocialChatProtos"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

@@ -3,7 +3,7 @@ package gapi
 import (
 	"Server/database"
 	"Server/models"
-	pb "Server/protos"
+	pb "SocialChatProtos"
 	"context"
 	"fmt"
 
