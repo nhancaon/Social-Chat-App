@@ -54,6 +54,7 @@ func main() {
 	}
 
 	database.Connect()
+	database.InitRedis()
 	app := fiber.New()
 
 	app.Use(cors.New(
@@ -123,6 +124,7 @@ func main() {
 	}
 
 	grpcServer.GracefulStop()
+	database.CloseRedis()
 
 	log.Println("Servers exited cleanly")
 }

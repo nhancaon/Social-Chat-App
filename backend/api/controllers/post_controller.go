@@ -5,6 +5,8 @@ import (
 	"Server/gapi"
 	"Server/models"
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"regexp"
@@ -144,6 +146,13 @@ func CreatePost(c *fiber.Ctx) error {
 		})
 	}
 
+	// new post changes both the creator's own profile post list and their
+	// own feed (their feed includes their own posts); other followers'
+	// feed caches are left to expire via TTL - fanning out to every
+	// follower's cache on each post isn't worth it at this scale
+	database.InvalidateCacheByPattern(ctx, fmt.Sprintf("user:profile:%s:page:*", userID))
+	database.InvalidateCacheByPattern(ctx, fmt.Sprintf("posts:feed:%s:page:*", userID))
+
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"data": createdPost,
 	})
@@ -271,6 +280,9 @@ func UpdatePost(c *fiber.Ctx) error {
 		})
 	}
 
+	database.InvalidateCacheByPattern(ctx, fmt.Sprintf("user:profile:%s:page:*", userID))
+	database.InvalidateCacheByPattern(ctx, fmt.Sprintf("posts:feed:%s:page:*", userID))
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"data": updatedPost})
 }
 
@@ -313,6 +325,25 @@ func GetAllPosts(c *fiber.Ctx) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	if page < 1 {
 		page = 1
+	}
+
+	// feed content depends on who the user follows, so it can only be
+	// invalidated cheaply for the user themselves (on follow/unfollow or
+	// their own post create/update/delete). A new post from someone they
+	// follow can't feasibly invalidate every follower's cache, so this is
+	// a short-TTL microcache: it absorbs bursts of repeat requests but
+	// still goes stale on its own within a few seconds.
+	cacheKey := fmt.Sprintf("posts:feed:%s:page:%d", userid, page)
+	if cachedData, err := database.RedisClient.Get(ctx, cacheKey).Result(); err == nil {
+		var cachedRes models.CachedGetAllPostResponse
+		if err := json.Unmarshal([]byte(cachedData), &cachedRes); err == nil {
+			return c.Status(fiber.StatusOK).JSON(fiber.Map{
+				"data":          cachedRes.Data,
+				"currentPage":   cachedRes.CurrentPage,
+				"numberOfPages": cachedRes.NumberOfPages,
+				"cached":        true,
+			})
+		}
 	}
 
 	if err := userSchema.FindOne(ctx, bson.M{"_id": MainUserid}).Decode(&user); err != nil {
@@ -361,10 +392,23 @@ func GetAllPosts(c *fiber.Ctx) error {
 		posts = make([]models.PostModel, 0)
 	}
 
+	numberOfPages := math.Ceil(float64(total) / float64(LIMIT))
+
+	response := models.CachedGetAllPostResponse{
+		Data:          posts,
+		CurrentPage:   page,
+		NumberOfPages: numberOfPages,
+	}
+	if responseJSON, err := json.Marshal(response); err != nil {
+		log.Printf("failed to marshal feed response for caching: %v", err)
+	} else if err := database.RedisClient.Set(ctx, cacheKey, responseJSON, 15*time.Second).Err(); err != nil {
+		log.Printf("failed to set feed cache for user %s: %v", userid, err)
+	}
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"data":          posts,
 		"currentPage":   page,
-		"numberOfPages": math.Ceil(float64(total) / float64(LIMIT)),
+		"numberOfPages": numberOfPages,
 	})
 }
 
@@ -733,6 +777,9 @@ func DeletePost(c *fiber.Ctx) error {
 		if _, err := CommentSchema.DeleteMany(ctx, bson.M{"postId": primID}); err != nil {
 			log.Printf("failed to delete comments for post %s: %v", primID.Hex(), err)
 		}
+
+		database.InvalidateCacheByPattern(ctx, fmt.Sprintf("user:profile:%s:page:*", userID))
+		database.InvalidateCacheByPattern(ctx, fmt.Sprintf("posts:feed:%s:page:*", userID))
 
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{
 			"message": "Post deleted successfully!",

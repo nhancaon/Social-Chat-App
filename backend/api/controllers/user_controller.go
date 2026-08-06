@@ -5,6 +5,8 @@ import (
 	"Server/gapi"
 	"Server/models"
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"math"
 	"slices"
@@ -45,6 +47,26 @@ func GetUserByID(c *fiber.Ctx) error {
 	if page < 1 {
 		page = 1
 	}
+
+	// Create Cache key for user profile & psots
+	cacheKey := fmt.Sprintf("user:profile:%s:page:%d", c.Params("id"), page)
+	// try to get form cache first .. from redis
+	cachedData, err := database.RedisClient.Get(ctx, cacheKey).Result()
+	if err == nil {
+		var cachedRes models.CachedGetUserResponse
+		if err := json.Unmarshal([]byte(cachedData), &cachedRes); err == nil {
+			return c.Status(fiber.StatusOK).JSON(fiber.Map{
+				"user":          cachedRes.User,
+				"posts":         cachedRes.Posts,
+				"currentPage":   cachedRes.CurrentPage,
+				"numberOfPages": cachedRes.NumberOfPages,
+				"cached":        true,
+			})
+		}
+	} else {
+		log.Printf("Cache miss for user profile %s: %s", c.Params("id"), err)
+	}
+
 	const LIMIT = 3
 
 	var user models.UserModel
@@ -93,6 +115,19 @@ func GetUserByID(c *fiber.Ctx) error {
 
 	if posts == nil {
 		posts = make([]models.PostModel, 0)
+	}
+	response := models.CachedGetUserResponse{
+		User:          user,
+		Posts:         posts,
+		CurrentPage:   page,
+		NumberOfPages: math.Ceil(float64(total) / float64(LIMIT)),
+	}
+
+	responseJSON, err := json.Marshal(response)
+	if err != nil {
+		log.Printf("Failed to marshal response for caching: %s", err)
+	} else if err := database.RedisClient.Set(ctx, cacheKey, responseJSON, 30*time.Second).Err(); err != nil {
+		log.Printf("Failed to set cache for user profile %s: %s", strID, err)
 	}
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
@@ -161,6 +196,10 @@ func UpdateUser(c *fiber.Ctx) error {
 			})
 		}
 	}
+
+	// profile changed (name/avatar/bio) so any cached page of this user's
+	// profile is now stale — evict it rather than waiting out the TTL
+	database.InvalidateCacheByPattern(ctx, fmt.Sprintf("user:profile:%s:page:*", userid.Hex()))
 
 	// sync the actor snapshot on existing notifications (best-effort, doesn't
 	// fail the profile update if it errors); runs in the background with its
@@ -305,6 +344,13 @@ func FollowingUser(c *fiber.Ctx) error {
 			"details": err.Error(),
 		})
 	}
+
+	// followers/following changed on both sides, and the acting user's own
+	// feed composition just changed too (new/removed followee) — evict all
+	// three rather than serving stale data for up to the cache TTL
+	database.InvalidateCacheByPattern(ctx, fmt.Sprintf("user:profile:%s:page:*", FirstUserID.Hex()))
+	database.InvalidateCacheByPattern(ctx, fmt.Sprintf("user:profile:%s:page:*", SecondUserID.Hex()))
+	database.InvalidateCacheByPattern(ctx, fmt.Sprintf("posts:feed:%s:page:*", suid))
 
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"SecondUser": SecondUser,
