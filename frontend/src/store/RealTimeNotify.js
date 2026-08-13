@@ -40,8 +40,9 @@ const RealTimeNotify = {
   },
   actions: {
     async connectToNotifications({ rootGetters, state, commit, dispatch }) {
-      const userId = rootGetters['auth/currentUserId'];
-      if (!userId) return;
+      const profile = JSON.parse(localStorage.getItem('profile') || 'null');
+      const token = profile?.token;
+      if (!token) return;
 
       if (
         state.socket &&
@@ -53,7 +54,7 @@ const RealTimeNotify = {
       commit('CLEAR_RECONNECT_TIMER');
 
       const baseUrl = process.env.VUE_APP_REALTIME_NOTIFICATION_URL;
-      const wsUrl = `${baseUrl}${userId}`;
+      const wsUrl = `${baseUrl}${token}`;
       const socket = new WebSocket(wsUrl);
 
       socket.onopen = () => {

@@ -12,12 +12,6 @@ import (
 func AuthMiddleware(c *fiber.Ctx) error {
 	authHeader := c.Get("Authorization")
 
-	if authHeader == "" {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message": "unauthenticated",
-		})
-	}
-
 	var tokenStr string
 	if strings.HasPrefix(authHeader, "Bearer ") {
 		tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
@@ -25,6 +19,24 @@ func AuthMiddleware(c *fiber.Ctx) error {
 		tokenStr = strings.TrimSpace(authHeader)
 	}
 
+	return authenticate(c, tokenStr)
+}
+
+// WSAuthMiddleware authenticates a WebSocket upgrade request. Browsers'
+// native WebSocket client cannot set an Authorization header, so it also
+// accepts the token as a "token" query parameter, falling back to the header
+// for non-browser clients.
+func WSAuthMiddleware(c *fiber.Ctx) error {
+	tokenStr := c.Query("token")
+	if tokenStr == "" {
+		authHeader := c.Get("Authorization")
+		tokenStr = strings.TrimPrefix(authHeader, "Bearer ")
+	}
+
+	return authenticate(c, tokenStr)
+}
+
+func authenticate(c *fiber.Ctx, tokenStr string) error {
 	if tokenStr == "" {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"message": "unauthenticated",

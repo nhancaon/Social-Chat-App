@@ -6,11 +6,15 @@ services:
     ports:
       - "5000:5000"
     env_file:
-      - ./backend/backend.env.example
+      - ./backend/api/.env.example
+    environment:
+      - REDIS_ADDR=redis:6379
     networks:
       - app-network
     depends_on:
       mongodb:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
   SocialChatRealtimeChat:
@@ -22,9 +26,10 @@ services:
     networks:
       - app-network
     depends_on:
-      - mongodb:
+      mongodb:
         condition: service_healthy
-      - SocialChatBackend
+      SocialChatBackend:
+        condition: service_started
 
   SocialChatRealtimeNotification:
     image: nhancaon/go-rt-notification
@@ -36,9 +41,10 @@ services:
     networks:
       - app-network
     depends_on:
-      - mongodb:
+      mongodb:
         condition: service_healthy
-      - SocialChatBackend
+      SocialChatBackend:
+        condition: service_started
 
   SocialChatFrontend:
     image: nhancaon/vue-appchat-fe
@@ -70,8 +76,24 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    container_name: redis
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   mongo-data:
+    driver: local
+  redis-data:
     driver: local
 
 networks:

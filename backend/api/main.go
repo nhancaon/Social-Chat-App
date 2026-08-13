@@ -2,24 +2,20 @@ package main
 
 import (
 	"Server/database"
-	_ "Server/docs"
-	"Server/gapi"
-	pb "SocialChatProtos"
-	"Server/routes"
+	"Server/kafka"
+	"Server/realtime"
+	"Server/server"
 	"context"
+	"flag"
+	"fmt"
 	"log"
-	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
-	"github.com/gofiber/fiber/v2/middleware/cors"
-	"github.com/gofiber/swagger"
 	"github.com/joho/godotenv"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 )
 
 // @title Fiber Golang Rest API
@@ -33,11 +29,6 @@ import (
 // @name Authorization
 
 func main() {
-	//load env example
-	// if err := godotenv.Load(".env.example"); err != nil {
-	// 	log.Println("No .env.example file found, using system environment variables instead")
-	// }
-
 	//load env
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system environment variables instead")
@@ -53,62 +44,69 @@ func main() {
 		grpcPort = "5001"
 	}
 
+	nodeID := flag.String("node_id", "", "Unique identifier for this node")
+	kafkaAddr := flag.String("kafka", "127.0.0.1:29092", "kafka address")
+	flag.Parse()
+
+	resolvedNodeID := *nodeID
+	if resolvedNodeID == "" {
+		if hostname, err := os.Hostname(); err == nil {
+			resolvedNodeID = hostname
+		} else {
+			resolvedNodeID = fmt.Sprintf("node-%d", time.Now().UnixNano())
+		}
+	}
+	log.Printf("node_id=%s kafka=%s", resolvedNodeID, *kafkaAddr)
+
 	database.Connect()
 	database.InitRedis()
-	app := fiber.New()
 
-	app.Use(cors.New(
-		cors.Config{
-			// AllowOrigins:     "*",
-			// AllowHeaders:     "Content-Type, Authorization",
-			// AllowMethods:     "GET, POST, PUT, DELETE",
-			AllowCredentials: true,
-			AllowOriginsFunc: func(origin string) bool {
-				return true
-			},
-		},
-	))
+	if err := kafka.WaitForKafka(*kafkaAddr, 1*time.Minute); err != nil {
+		log.Fatalf("kafka not ready: %v", err)
+	}
+	time.Sleep(3 * time.Second) // give topic metadata time to propagate across brokers
 
-	// Setup Grpc Server
-	lis, err := net.Listen("tcp", ":"+grpcPort)
+	hub, err := realtime.InitChatHub(*kafkaAddr, resolvedNodeID)
 	if err != nil {
-		log.Fatalf("failed to listen on gRPC port %s: %v", grpcPort, err)
+		log.Fatalf("failed to start chat hub: %v", err)
 	}
 
-	grpcServer := grpc.NewServer()
-	pb.RegisterRealtimeChatServiceServer(grpcServer, &gapi.Server{})
-	reflection.Register(grpcServer)
+	if err := realtime.InitNotificationManger(*kafkaAddr, resolvedNodeID); err != nil {
+		log.Fatalf("failed to start notification manager: %v", err)
+	}
+
+	heartbeatMgr, err := kafka.NewHeartbeatManager(*kafkaAddr, resolvedNodeID, hub)
+	if err != nil {
+		log.Fatalf("failed to start heartbeat manager: %v", err)
+	}
+
+	grpcServer, grpcListener, err := server.NewGRPCServer(grpcPort)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
 
 	go func() {
 		log.Printf("gRPC server running on port %s", grpcPort)
-		if err := grpcServer.Serve(lis); err != nil {
+		if err := grpcServer.Serve(grpcListener); err != nil {
 			log.Printf("gRPC server stopped: %v", err)
 		}
 	}()
-	// ---- end gRPC setup ----
 
-	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Welcome to Socail app")
+	app := server.NewHTTPServer()
+
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{
+			"status": "healthy",
+			"node":   resolvedNodeID,
+		})
 	})
 
-	//Setup routes
-	routes.SetupAuthRoutes(app)
-	routes.SetupUserRoutes(app)
-	routes.SetupPostRoutes(app)
-	routes.SetupChatRoutes(app)
-	routes.SetupNotificationRoutes(app)
-
-	//Server swagger docs
-	app.Get("/swagger/*", swagger.HandlerDefault)
-
-	// ---- Start HTTP server (non-blocking) ----
 	go func() {
 		log.Printf("HTTP server running on port %s", port)
 		if err := app.Listen(":" + port); err != nil {
 			log.Printf("HTTP server stopped: %v", err)
 		}
 	}()
-	// ---- end HTTP server start ----
 
 	// ---- Graceful shutdown ----
 	quit := make(chan os.Signal, 1)
@@ -124,6 +122,11 @@ func main() {
 	}
 
 	grpcServer.GracefulStop()
+	heartbeatMgr.Stop()
+	hub.Close()
+	if nm := realtime.GetNotificationManager(); nm != nil {
+		nm.Close()
+	}
 	database.CloseRedis()
 
 	log.Println("Servers exited cleanly")

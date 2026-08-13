@@ -48,10 +48,12 @@ const RealTimeChatStore = {
     async createChatConnection({ state, commit }) {
       try {
         commit('SET_USER_ID');
-        if (!state.userId || state.ws) return;
+        const profile = JSON.parse(localStorage.getItem('profile') || 'null');
+        const token = profile?.token;
+        if (!token || state.ws) return;
 
         const baseUrl = process.env.VUE_APP_REALTIME_CHAT_URL;
-        const ws = new WebSocket(`${baseUrl}${state.userId}`);
+        const ws = new WebSocket(`${baseUrl}${token}`);
 
         ws.onopen = () => {
           commit('SET_WS', ws);
