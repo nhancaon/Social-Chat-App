@@ -190,7 +190,8 @@ export default {
     },
 
     goToDetails() {
-      this.$router.push({ path: `/PostDetail/${this.localPost?._id}` })
+      if (!this.localPost?._id) return
+      this.$router.push({ path: `/PostDetail/${this.localPost._id}` })
     },
 
     async fireUpdate() {

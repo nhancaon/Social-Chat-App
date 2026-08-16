@@ -10,8 +10,9 @@ import (
 
 func SetupNotificationRoutes(app *fiber.App) {
 	app.Get("/notification/mark-notification-asreaded", middleware.AuthMiddleware, controllers.MarkNotificationAsRead)
-	app.Get("/notification/:userid", middleware.AuthMiddleware, controllers.GetUserNotification)
 
+	// Registered before the /notification/:userid wildcard below — otherwise
+	// that route would match "ws" as the :userid param and shadow this one.
 	app.Get("/notification/ws", middleware.WSAuthMiddleware, func(c *fiber.Ctx) error {
 		notificationHub := realtime.GetNotificationHub()
 		if notificationHub == nil {
@@ -19,4 +20,6 @@ func SetupNotificationRoutes(app *fiber.App) {
 		}
 		return notificationHub.HandleClient(c)
 	})
+
+	app.Get("/notification/:userid", middleware.AuthMiddleware, controllers.GetUserNotification)
 }

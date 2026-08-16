@@ -9,9 +9,18 @@ import (
 
 var ValidatorUser = validator.New()
 
+// authInput is a dedicated parse/validate target for signup & signin bodies —
+// kept separate from models.UserModel so the request's plaintext "password"
+// field is always readable here, independent of how UserModel tags its own
+// Password field for storage/response purposes.
+type authInput struct {
+	Email    string `validate:"required"`
+	Password string `validate:"required,min=5"`
+}
+
 func ValidateUser(c *fiber.Ctx) error {
 	var errors []*models.IError
-	var body models.UserModel
+	var body authInput
 
 	if err := c.BodyParser(&body); err != nil {
 		return err

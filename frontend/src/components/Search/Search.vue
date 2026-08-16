@@ -95,9 +95,11 @@ export default {
       }
     },
     goUser(id) {
+      if (!id) return
       this.$router.push({ path: `/Profile/${id}` })
     },
     goPost(id) {
+      if (!id) return
       this.$router.push({ path: `/PostDetail/${id}` })
     }
   },

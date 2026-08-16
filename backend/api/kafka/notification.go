@@ -9,19 +9,25 @@ import (
 	"github.com/segmentio/kafka-go"
 )
 
+// Notification and User mirror models.Notification / models.User's JSON
+// shape exactly (same field names) — this is the payload pushed live over
+// the notification websocket, and the frontend renders it with the same
+// code path as notifications fetched from GET /notification/:userid, so the
+// two shapes must match or fields silently come through as undefined.
 type Notification struct {
-	ID        string    `json:"_id"`
+	ID        string    `json:"_id,omitempty"`
 	Details   string    `json:"details"`
-	MainUID   string    `json:"mainuid"`
-	TargetID  string    `json:"targetid"`
-	IsReaded  bool      `json:"isreded"`
+	MainUID   string    `json:"mainUid"`
+	TargetID  string    `json:"targetId"`
+	UserID    string    `json:"userId"`
+	IsRead    bool      `json:"isRead"`
 	CreatedAt time.Time `json:"createdAt"`
 	User      User      `json:"user"`
 }
 
 type User struct {
-	Name     string `json:"name"`
-	ImageUrl string `json:"imageUrl"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar,omitempty"`
 }
 
 type NotificationHandler interface {

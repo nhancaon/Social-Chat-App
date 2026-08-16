@@ -37,10 +37,11 @@ export default {
     methods: {
         ...mapActions('notification', ['getUnreadNotifyNum', 'markAllNotifyAsRead']),
         MoveToThePath(notify) {
+            if (!notify.targetId) return
             if (notify.details?.toString().includes('Post')) {
-                this.$router.push(`/PostDetail/${notify.targetid}`);
+                this.$router.push(`/PostDetail/${notify.targetId}`);
             } else {
-                this.$router.push(`/Profile/${notify.targetid}`);
+                this.$router.push(`/Profile/${notify.targetId}`);
             }
         }
     },

@@ -23,11 +23,12 @@ func publishNotification(notification models.Notification) {
 		Details:   notification.Details,
 		MainUID:   notification.MainUID,
 		TargetID:  notification.TargetID,
-		IsReaded:  notification.IsRead,
+		UserID:    notification.UserID,
+		IsRead:    notification.IsRead,
 		CreatedAt: notification.CreatedAt,
 		User: kafka.User{
-			Name:     notification.User.Name,
-			ImageUrl: notification.User.Avatar,
+			Name:   notification.User.Name,
+			Avatar: notification.User.Avatar,
 		},
 	}
 
