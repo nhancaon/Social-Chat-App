@@ -112,6 +112,7 @@ func TestUserRegistration(t *testing.T) {
 						assert.Equal(t, tt.payload.Email, result["email"])
 						expectedName := tt.payload.FirstName + " " + tt.payload.LastName
 						assert.Equal(t, expectedName, result["name"])
+						assert.NotContains(t, result, "password", "password hash must never be present in an API response")
 					}
 				}
 			}
@@ -194,12 +195,63 @@ func TestUserLogin(t *testing.T) {
 
 					if result, ok := respMap["result"].(map[string]interface{}); ok {
 						assert.Equal(t, tt.payload.Email, result["email"])
+						assert.NotContains(t, result, "password", "password hash must never be present in an API response")
 					}
 				}
 			}
 
 		})
 	}
+}
+
+func TestRefreshUser(t *testing.T) {
+	cleanupCollections()
+
+	registerPayload := models.CreateUser{
+		Email:     "refresh@example.com",
+		Password:  "password123",
+		FirstName: "Refresh",
+		LastName:  "Test",
+	}
+	_, registerBody := makeJSONRequest(t, http.MethodPost, "/user/signup", registerPayload)
+	registerMap, ok := registerBody.(map[string]interface{})
+	require.True(t, ok)
+	token, ok := registerMap["token"].(string)
+	require.True(t, ok)
+	require.NotEmpty(t, token)
+
+	t.Run("Missing Authorization header", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/user/refresh", nil)
+		require.NoError(t, err)
+
+		resp, err := app.Test(req, -1)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+
+	t.Run("Valid token", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "/user/refresh", nil)
+		require.NoError(t, err)
+		req.Header.Set("Authorization", "Bearer "+token)
+
+		resp, err := app.Test(req, -1)
+		require.NoError(t, err)
+		defer resp.Body.Close()
+
+		var responseBody map[string]interface{}
+		require.NoError(t, json.NewDecoder(resp.Body).Decode(&responseBody))
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+		assert.Contains(t, responseBody, "token")
+		assert.Contains(t, responseBody, "result")
+
+		if result, ok := responseBody["result"].(map[string]interface{}); ok {
+			assert.Equal(t, registerPayload.Email, result["email"])
+			assert.NotContains(t, result, "password", "password hash must never be present in an API response")
+		}
+	})
 }
 
 // Helper function to create a user for testing.
