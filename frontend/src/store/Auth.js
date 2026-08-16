@@ -10,7 +10,7 @@ const Auth = {
   namespaced: true,
   state: initialState(),
   getters: {
-    GetAuthData: (state) => state.authData,
+    getAuthData: (state) => state.authData,
     isAuthenticated: (state) => !!state.authData?.token,
     currentUserId: (state) => state.authData?.result?._id || null,
   },
@@ -81,16 +81,34 @@ const Auth = {
       }
 
       commit('SET_AUTH', user)
+      dispatch('refreshUser')
       if (user?.result?._id) {
         dispatch('fetchInitialData', user.result._id)
+      }
+    },
+
+    // best-effort: refreshes the user snapshot and pushes the token's
+    // expiry out another 24h. Only clears the session on a real 401
+    // (token actually invalid/expired) - network hiccups shouldn't log
+    // the user out.
+    async refreshUser({ commit }) {
+      try {
+        const { data } = await api.refreshUser()
+        commit('SET_AUTH', data)
+        return data
+      } catch (error) {
+        if (error?.response?.status === 401) {
+          commit('LOGOUT')
+        }
+        console.log('refreshUser error:', error)
       }
     },
 
     async fetchInitialData({ dispatch }, userId) {
       try {
         await Promise.all([
-          dispatch('chat/GetUnreadMessageNum', userId, { root: true }),
-          dispatch('notification/GetUnReadNotifyNum', userId, { root: true }),
+          dispatch('chat/getUnreadMessageNum', userId, { root: true }),
+          dispatch('notification/getUnreadNotifyNum', userId, { root: true }),
         ])
       } catch (error) {
         // không throw — lỗi fetch unread không nên chặn luồng login/khởi động app

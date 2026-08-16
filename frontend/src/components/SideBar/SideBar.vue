@@ -22,9 +22,9 @@ import { mapGetters } from 'vuex';
 export default {
   name: 'SideBar',
   computed: {
-    ...mapGetters('auth', ['GetAuthData']),
+    ...mapGetters('auth', ['getAuthData']),
     currentUser() {
-      return this.GetAuthData?.result ?? null
+      return this.getAuthData?.result ?? null
     }
   }
 }

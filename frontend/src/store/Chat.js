@@ -14,7 +14,7 @@ const Chat = {
     getUnreadMsgCount: (state) => state.unreadMsgCount
   },
   mutations: {
-    updateUnreadMsgCount(state, payload) {
+    UPDATE_UNREAD_MSG_COUNT(state, payload) {
       state.unreadMsgCount = payload
     },
     RESET_STATE(state) {
@@ -22,18 +22,18 @@ const Chat = {
     },
   },
   actions: {
-    async GetUnreadMessageNum({ commit }, uid) {
+    async getUnreadMessageNum({ commit }, uid) {
       try {
         const { data } = await api.getUnreadMessageCount(uid)
-        commit('updateUnreadMsgCount', data.total)
+        commit('UPDATE_UNREAD_MSG_COUNT', data.total)
         return data
       } catch (error) {
-        console.error('GetUnreadMessageNum error:', error)
+        console.error('getUnreadMessageNum error:', error)
         throw error
       }
     },
 
-    async GetChatMsgsBetweenTwoUsers(_, payload) {
+    async getChatMsgsBetweenTwoUsers(_, payload) {
       try {
         const { data } = await api.getMessagesByPage(
           payload.from,
@@ -42,12 +42,12 @@ const Chat = {
         )
         return data
       } catch (error) {
-        console.error('GetChatMsgsBetweenTwoUsers error:', error)
+        console.error('getChatMsgsBetweenTwoUsers error:', error)
         throw error
       }
     },
 
-    async SendMessage(_, payload) {
+    async sendMessage(_, payload) {
       try {
         const msg = {
           content: payload.content,
@@ -57,18 +57,18 @@ const Chat = {
         const { data } = await api.sendMessage(msg)
         return data
       } catch (error) {
-        console.error('SendMessage error:', error)
+        console.error('sendMessage error:', error)
         throw error
       }
     },
 
-    async MarkMsgsAsReaded({ dispatch }, payload) {
+    async markMsgsAsRead({ dispatch }, payload) {
       try {
         const { data } = await api.markMessageAsRead(payload.mainuid, payload.otheruid)
-        await dispatch('GetUnreadMessageNum', payload.mainuid)
+        await dispatch('getUnreadMessageNum', payload.mainuid)
         return data
       } catch (error) {
-        console.error('MarkMsgsAsReaded error:', error)
+        console.error('markMsgsAsRead error:', error)
         throw error
       }
     }

@@ -17,7 +17,7 @@
       <!-- Search (desktop) -->
       <div class="search-wrap gt-xs">
         <q-input v-model="searchText" dense rounded outlined class="search-input" placeholder="Search"
-          @keyup.enter="GoSearch">
+          @keyup.enter="goSearch">
           <template #prepend>
             <q-icon name="eva-search-outline" size="20px" class="search-icon" />
           </template>
@@ -28,14 +28,14 @@
 
       <!-- Right icons (desktop) -->
       <div class="header-actions gt-xs">
-        <q-btn round flat unelevated v-show="isLoggedIn" @click="GoToChat"
+        <q-btn round flat unelevated v-show="isLoggedIn" @click="goToChat"
           :icon="getUnreadMsgCount > 0 ? 'eva-message-square-outline' : 'eva-message-square'" class="header-icon-btn"
           :class="{ 'is-active': getUnreadMsgCount > 0 }">
           <q-badge v-if="getUnreadMsgCount > 0" class="nav-badge" floating rounded :label="getUnreadMsgCount" />
           <q-tooltip>Messages</q-tooltip>
         </q-btn>
 
-        <q-btn round flat unelevated v-show="isLoggedIn" @click="GoToNotification"
+        <q-btn round flat unelevated v-show="isLoggedIn" @click="goToNotification"
           :icon="getUnreadNotificationCount > 0 ? 'eva-bell-outline' : 'eva-bell'" class="header-icon-btn"
           :class="{ 'is-active': getUnreadNotificationCount > 0 }">
           <q-badge v-if="getUnreadNotificationCount > 0" class="nav-badge" floating rounded
@@ -50,12 +50,12 @@
           </q-avatar>
           <q-menu anchor="bottom right" self="top right" class="user-menu">
             <q-list style="min-width: 160px" padding>
-              <q-item clickable v-close-popup @click="Profile">
+              <q-item clickable v-close-popup @click="goToProfile">
                 <q-item-section avatar><q-icon name="eva-person-outline" class="menu-icon" /></q-item-section>
                 <q-item-section>Profile</q-item-section>
               </q-item>
               <q-separator spaced />
-              <q-item clickable v-close-popup @click="LogUserOut">
+              <q-item clickable v-close-popup @click="logUserOut">
                 <q-item-section avatar><q-icon name="eva-log-out-outline" class="menu-icon" /></q-item-section>
                 <q-item-section>Logout</q-item-section>
               </q-item>
@@ -90,7 +90,7 @@
       </div>
 
       <q-input v-model="searchText" dense outlined rounded class="q-mx-md q-mb-md" placeholder="Search"
-        @keyup.enter="() => { GoSearch(); mobileMenuOpen = false }">
+        @keyup.enter="() => { goSearch(); mobileMenuOpen = false }">
         <template #prepend><q-icon name="eva-search-outline" class="search-icon" /></template>
       </q-input>
 
@@ -152,22 +152,22 @@ export default {
     };
   },
   computed: {
-    ...mapGetters('auth', ['GetAuthData', 'currentUserId']),
+    ...mapGetters('auth', ['getAuthData', 'currentUserId']),
     ...mapGetters('chat', ['getUnreadMsgCount']),
     ...mapGetters('notification', ['getUnreadNotificationCount']),
     ...mapGetters('realTimeChat', ['getMessageReceivedTick']),
 
     isLoggedIn() {
-      return !!this.GetAuthData?.result;
+      return !!this.getAuthData?.result;
     },
     currentUser() {
-      return this.GetAuthData?.result;
+      return this.getAuthData?.result;
     }
   },
   watch: {
     getMessageReceivedTick() {
       if (this.currentUserId) {
-        this.GetUnreadMessageNum(this.currentUserId);
+        this.getUnreadMessageNum(this.currentUserId);
       }
     },
   },
@@ -175,17 +175,17 @@ export default {
     ...mapActions('auth', ['logout']),
     ...mapActions('realTimeNotify', ['connectToNotifications', 'disconnectFromNotifications']),
     ...mapActions('realTimeChat', ['createChatConnection', 'stopConnectionToChat']),
-    ...mapActions('notification', ['GetUnReadNotifyNum']),
-    ...mapActions('chat', ['GetUnreadMessageNum']),
-    GoSearch() {
+    ...mapActions('notification', ['getUnreadNotifyNum']),
+    ...mapActions('chat', ['getUnreadMessageNum']),
+    goSearch() {
       if (!this.searchText) return
       this.$router.push({ path: '/Search', query: { search: this.searchText } })
     },
-    Profile() {
+    goToProfile() {
       const id = this.currentUser?._id
       this.$router.push(`/Profile/${id}`)
     },
-    async LogUserOut() {
+    async logUserOut() {
       try {
         await this.stopConnectionToChat();
         await this.disconnectFromNotifications();
@@ -194,10 +194,10 @@ export default {
         this.$router.push('/Auth');
       }
     },
-    GoToNotification() {
+    goToNotification() {
       this.$router.push('/Notification')
     },
-    GoToChat() {
+    goToChat() {
       this.$router.push('/Chat')
     },
     handleVisibilityChange() {
@@ -207,19 +207,19 @@ export default {
     },
     handleProfileClick() {
       this.mobileMenuOpen = false;
-      this.Profile();
+      this.goToProfile();
     },
     handleChatClick() {
       this.mobileMenuOpen = false;
-      this.GoToChat();
+      this.goToChat();
     },
     handleNotificationClick() {
       this.mobileMenuOpen = false;
-      this.GoToNotification();
+      this.goToNotification();
     },
     handleLogoutClick() {
       this.mobileMenuOpen = false;
-      this.LogUserOut();
+      this.logUserOut();
     }
   },
   async mounted() {
@@ -227,8 +227,8 @@ export default {
     const id = this.currentUserId;
     if (id) {
       try {
-        await this.GetUnReadNotifyNum(id);
-        await this.GetUnreadMessageNum(id);
+        await this.getUnreadNotifyNum(id);
+        await this.getUnreadMessageNum(id);
       } catch (error) {
         console.log('Lỗi lấy số liệu ban đầu:', error);
       }

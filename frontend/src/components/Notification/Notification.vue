@@ -35,7 +35,7 @@ export default {
         }
     },
     methods: {
-        ...mapActions('notification', ['GetUnReadNotifyNum', 'MarkAllNotifyAsReaded']),
+        ...mapActions('notification', ['getUnreadNotifyNum', 'markAllNotifyAsRead']),
         MoveToThePath(notify) {
             if (notify.details?.toString().includes('Post')) {
                 this.$router.push(`/PostDetail/${notify.targetid}`);
@@ -47,8 +47,8 @@ export default {
     async mounted() {
         const userId = this.currentUserId;
         if (userId) {
-            await this.GetUnReadNotifyNum(userId);
-            await this.MarkAllNotifyAsReaded(userId);
+            await this.getUnreadNotifyNum(userId);
+            await this.markAllNotifyAsRead(userId);
         }
     }
 }

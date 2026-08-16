@@ -64,10 +64,10 @@ export default {
     }
   },
   computed: {
-    ...mapGetters('auth', ['GetAuthData'])
+    ...mapGetters('auth', ['getAuthData'])
   },
   methods: {
-    ...mapActions('users', ['GetUserByID']),
+    ...mapActions('users', ['getUserById']),
     toggleEditMode() {
       this.editMode = !this.editMode
     },
@@ -79,10 +79,10 @@ export default {
       this.current = 1
       this.hasReachedEnd = false
       try {
-        const loggedInUserId = this.GetAuthData?.result?._id
+        const loggedInUserId = this.getAuthData?.result?._id
         const profileId = this.$route.params.id
 
-        const data = await this.GetUserByID({ id: profileId, page: this.current })
+        const data = await this.getUserById({ id: profileId, page: this.current })
 
         this.userData = data?.user ?? null
         this.userPosts = data?.posts ?? []
@@ -109,7 +109,7 @@ export default {
 
       try {
         const profileId = this.$route.params.id
-        const data = await this.GetUserByID({ id: profileId, page: this.current })
+        const data = await this.getUserById({ id: profileId, page: this.current })
         this.userPosts = [...this.userPosts, ...(data?.posts ?? [])]
         this.hasReachedEnd = this.current >= this.max
       } catch (error) {

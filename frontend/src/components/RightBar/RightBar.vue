@@ -27,10 +27,10 @@ export default {
     }
   },
   computed: {
-    ...mapGetters('auth', ['GetAuthData'])
+    ...mapGetters('auth', ['getAuthData'])
   },
   watch: {
-    GetAuthData: {
+    getAuthData: {
       immediate: true,
       handler(newVal) {
         const loggedInUser = newVal?.result
@@ -41,10 +41,10 @@ export default {
     }
   },
   methods: {
-    ...mapActions('users', ['GetTheUserSug']),
+    ...mapActions('users', ['getSuggestedUsers']),
     async fetchSuggestedUsers(userId) {
       try {
-        const result = await this.GetTheUserSug(userId)
+        const result = await this.getSuggestedUsers(userId)
         this.suggestedUsers = result?.users ?? []
       } catch (error) {
         console.error('fetchSuggestedUsers error:', error)

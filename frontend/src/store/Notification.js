@@ -32,22 +32,22 @@ const Notification = {
     }
   },
   actions: {
-    async GetUnReadNotifyNum({ commit }, userId) {
+    async getUnreadNotifyNum({ commit }, userId) {
       try {
         const { data } = await api.getNotificationForUser(userId);
         commit('SET_NOTIFICATIONS', data.notifications || []);
         return data.notifications;
       } catch (error) {
-        console.error('GetUnReadNotifyNum error:', error);
+        console.error('getUnreadNotifyNum error:', error);
         throw error;
       }
     },
-    async MarkAllNotifyAsReaded({ commit }, userId) {
+    async markAllNotifyAsRead({ commit }, userId) {
       try {
         await api.markNotificationAsRead(userId);
         commit('MARK_ALL_READ');
       } catch (error) {
-        console.error('MarkAllNotifyAsReaded error:', error);
+        console.error('markAllNotifyAsRead error:', error);
         throw error;
       }
     }

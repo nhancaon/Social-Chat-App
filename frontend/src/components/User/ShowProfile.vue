@@ -52,7 +52,7 @@ export default {
     }
   },
   methods: {
-    ...mapActions('users', ['FollowUser', 'GetUserByID']),
+    ...mapActions('users', ['followUser', 'getUserById']),
 
     checkUserFollowing() {
       const loggedUserId = JSON.parse(localStorage.getItem('profile'))?.result?._id
@@ -63,7 +63,7 @@ export default {
       if (this.isProcessingFollow) return
       this.isProcessingFollow = true
       try {
-        const data = await this.FollowUser(this.userData._id)
+        const data = await this.followUser(this.userData._id)
         if (data?.FirstUser) {
           this.$emit('update-user', { data: data.FirstUser })
           this.checkUserFollowing()

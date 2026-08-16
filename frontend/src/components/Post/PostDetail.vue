@@ -40,7 +40,7 @@ export default {
     }
   },
   computed: {
-    ...mapGetters('auth', ['GetAuthData'])
+    ...mapGetters('auth', ['getAuthData'])
   },
   methods: {
     ...mapActions('posts', ['getPost']),
@@ -53,7 +53,7 @@ export default {
         const { post } = await this.getPost(this.$route.params.id)
         this.post = post ?? null
 
-        const loggedInUserId = this.GetAuthData?.result?._id
+        const loggedInUserId = this.getAuthData?.result?._id
         this.isSameUser = !!post && String(post.creator) === String(loggedInUserId)
       } catch (error) {
         console.error('fetchPost error:', error)

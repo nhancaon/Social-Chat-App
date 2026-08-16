@@ -12,8 +12,8 @@ const Users = {
   namespaced: true,
   state: initialState(),
   getters: {
-    GetUser: (state) => state.currentUser,
-    GetViewedProfile: (state) => state.viewedProfile,
+    getCurrentUser: (state) => state.currentUser,
+    getViewedProfile: (state) => state.viewedProfile,
   },
   mutations: {
     SET_CURRENT_USER(state, user) {
@@ -39,7 +39,7 @@ const Users = {
       }
     },
 
-    async GetUserFollowersFollowing({ state, commit }) {
+    async getUserFollowersFollowing({ state, commit }) {
       commit('SET_LOADING', true)
       try {
         // luôn dùng currentUser, không bao giờ bị ảnh hưởng bởi việc xem profile khác
@@ -59,7 +59,7 @@ const Users = {
 
     // dùng khi xem trang Profile của người khác
     // payload có thể là id (string) hoặc { id, page } khi cần phân trang post
-    async GetUserByID({ commit }, payload) {
+    async getUserById({ commit }, payload) {
       const { id, page = 1 } = typeof payload === 'string' ? { id: payload } : payload
       try {
         const { data } = await api.fetchUserProfile(id, page)
@@ -71,18 +71,18 @@ const Users = {
       }
     },
 
-    async UpdateUserData({ commit }, userData) {
+    async updateUserData({ commit }, userData) {
       const { data } = await api.updateUser(userData)
       commit('SET_CURRENT_USER', data.user) // update chính mình sau khi sửa profile
       return data
     },
 
-    async FollowUser(_, profileID) {
-      const { data } = await api.following(profileID)
+    async followUser(_, profileID) {
+      const { data } = await api.followUser(profileID)
       return data
     },
 
-    async GetTheUserSug(_, id) {
+    async getSuggestedUsers(_, id) {
       const { data } = await api.getSuggestedUsers(id)
       return data
     },

@@ -160,7 +160,7 @@ export default {
     }
   },
   computed: {
-    ...mapGetters('auth', ['GetAuthData']),
+    ...mapGetters('auth', ['getAuthData']),
     likesCount() {
       return this.localPost.likes?.length ?? 0
     },
@@ -180,11 +180,11 @@ export default {
     }
   },
   methods: {
-    ...mapActions('users', ['GetUserByID']),
-    ...mapActions('posts', ['likePostByUser', 'commentPost', 'deleteComment', 'updatePost']),
+    ...mapActions('users', ['getUserById']),
+    ...mapActions('posts', ['likePost', 'commentPost', 'deleteComment', 'updatePost']),
 
     canDeleteComment(comment) {
-      const uid = this.GetAuthData?.result?._id
+      const uid = this.getAuthData?.result?._id
       if (!uid) return false
       return comment.userId === uid || this.localPost.creator === uid
     },
@@ -214,7 +214,7 @@ export default {
     },
 
     async like() {
-      const uid = this.GetAuthData?.result?._id
+      const uid = this.getAuthData?.result?._id
       if (!uid) return
 
       const wasLiked = this.userLike
@@ -226,7 +226,7 @@ export default {
       }
 
       try {
-        await this.likePostByUser(this.localPost._id)
+        await this.likePost(this.localPost._id)
       } catch (error) {
         console.error('like error:', error)
         // rollback if the request fails
@@ -304,14 +304,14 @@ export default {
     this.localPost = JSON.parse(JSON.stringify(this.post))
 
     try {
-      const { user } = await this.GetUserByID(this.localPost?.creator)
+      const { user } = await this.getUserById(this.localPost?.creator)
       this.user = user ?? {}
     } catch (error) {
-      console.error('GetUserByID error:', error)
+      console.error('getUserById error:', error)
       this.user = {}
     }
 
-    const uid = this.GetAuthData?.result?._id
+    const uid = this.getAuthData?.result?._id
     const likes = this.localPost.likes ?? []
     this.userLike = !!likes.find((id) => id === uid)
   }

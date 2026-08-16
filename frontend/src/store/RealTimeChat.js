@@ -11,7 +11,7 @@ function initialState() {
   };
 }
 
-const RealTimeChatStore = {
+const RealTimeChat = {
   namespaced: true,
   state: initialState(),
   getters: {
@@ -100,4 +100,4 @@ const RealTimeChatStore = {
   },
 };
 
-export default RealTimeChatStore;
+export default RealTimeChat;

@@ -17,35 +17,6 @@ services:
       redis:
         condition: service_healthy
 
-  SocialChatRealtimeChat:
-    image: nhancaon/go-rt-chat
-    container_name: social-rt-chat
-    restart: unless-stopped
-    ports:
-      - "8001:8001"
-    networks:
-      - app-network
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      SocialChatBackend:
-        condition: service_started
-
-  SocialChatRealtimeNotification:
-    image: nhancaon/go-rt-notification
-    container_name: social-rt-notification
-    restart: unless-stopped
-    ports:
-      - "8090:8090"
-      - "8088:8088"
-    networks:
-      - app-network
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      SocialChatBackend:
-        condition: service_started
-
   SocialChatFrontend:
     image: nhancaon/vue-appchat-fe
     container_name: social-chat-fe
@@ -58,8 +29,6 @@ services:
       - app-network
     depends_on:
       - SocialChatBackend
-      - SocialChatRealtimeChat
-      - SocialChatRealtimeNotification
 
   mongodb:
     container_name: mongodb

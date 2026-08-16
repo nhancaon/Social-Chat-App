@@ -1,5 +1,5 @@
 <template>
-  <q-page-sticky :position="$q.screen.lt.sm ? 'bottom-right' : 'bottom-left'" v-show="GetAuthData?.result"
+  <q-page-sticky :position="$q.screen.lt.sm ? 'bottom-right' : 'bottom-left'" v-show="getAuthData?.result"
     :offset="$q.screen.lt.sm ? [18, 18] : [18, 60]">
     <div class="q-pa-md q-gutter-sm">
       <q-btn :label="$q.screen.gt.xs ? 'Create Post' : ''" style="cursor: pointer;" icon="eva-plus-circle-outline"
@@ -90,7 +90,7 @@ export default {
     }
   },
   computed: {
-    ...mapGetters('auth', ['GetAuthData'])
+    ...mapGetters('auth', ['getAuthData'])
   },
   methods: {
     ...mapActions('posts', ['createPost']),
@@ -172,7 +172,7 @@ export default {
     },
 
     async createPostHandler() {
-      this.post.name = this.GetAuthData?.result?.name
+      this.post.name = this.getAuthData?.result?.name
 
       if (!this.validatePost()) return
 

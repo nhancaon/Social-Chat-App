@@ -15,7 +15,7 @@
         <q-card class="auth-card">
           <h1 class="text-h6 text-center">Sign in</h1>
           <q-card-section>
-            <form @submit.prevent.stop="Login" class="q-gutter-md">
+            <form @submit.prevent.stop="login" class="q-gutter-md">
               <q-input filled v-model="signinForm.email" label="Your Email *" hint="Email" lazy-rules />
               <q-input filled v-model="signinForm.password" label="Your Password *" hint="Password" type="password"
                 lazy-rules />
@@ -31,7 +31,7 @@
         <q-card class="auth-card">
           <h1 class="text-h6 text-center">Sign up | Create New Account</h1>
           <q-card-section>
-            <form @submit.prevent.stop="Register" class="q-gutter-md">
+            <form @submit.prevent.stop="register" class="q-gutter-md">
               <div class="row q-col-gutter-sm">
                 <div class="col-12 col-sm-6">
                   <q-input filled v-model="signupForm.firstName" label="Your First Name *" hint="First name"
@@ -120,7 +120,7 @@ export default {
       return true
     },
 
-    async Login() {
+    async login() {
       if (!this.validateSignin()) return
 
       this.signinLoading = true
@@ -142,7 +142,7 @@ export default {
       }
     },
 
-    async Register() {
+    async register() {
       if (!this.validateSignup()) return
 
       this.signupLoading = true

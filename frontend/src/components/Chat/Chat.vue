@@ -27,8 +27,8 @@
                                     <q-badge :color="isOnline(contact._id) ? 'positive' : 'grey'" rounded />
                                 </q-item-section>
 
-                                <q-item-section side v-if="contact.unReadedmessage && contact.unReadedmessage > 0">
-                                    <q-badge color="negative" rounded :label="contact?.unReadedmessage" />
+                                <q-item-section side v-if="contact.unreadMessage && contact.unreadMessage > 0">
+                                    <q-badge color="negative" rounded :label="contact?.unreadMessage" />
                                 </q-item-section>
                             </q-item>
                         </q-list>
@@ -43,15 +43,15 @@
                         <div v-for="(msg, idx) in messageBetweenUsers" :key="msg._id || idx"
                             style="width: 100%; flex-shrink: 0;">
                             <q-chat-message
-                                :name="msg.sender === MainUserData._id ? MainUserData.name : selectedUser.name"
-                                :avatar="msg.sender === MainUserData._id ? MainUserData.imageUrl : selectedUser.imageUrl"
-                                :text="[msg.content]" :sent="msg.sender === MainUserData._id ? true : false" />
+                                :name="msg.sender === mainUserData._id ? mainUserData.name : selectedUser.name"
+                                :avatar="msg.sender === mainUserData._id ? mainUserData.imageUrl : selectedUser.imageUrl"
+                                :text="[msg.content]" :sent="msg.sender === mainUserData._id ? true : false" />
                         </div>
                     </div>
 
                     <q-separator spaced />
-                    <q-input outlined v-model="messageToSend.text" @keyup.enter="Sendmessage" label="write message..">
-                        <q-btn v-if="messageToSend.text != ''" @click="Sendmessage" flat round color="primary"
+                    <q-input outlined v-model="messageToSend.text" @keyup.enter="handleSendMessage" label="write message..">
+                        <q-btn v-if="messageToSend.text != ''" @click="handleSendMessage" flat round color="primary"
                             icon="eva-arrow-right" />
                     </q-input>
                 </div>
@@ -72,11 +72,11 @@ export default {
             messageBetweenUsers: [],
             messagelistnum: 0,
             selectedUser: null,
-            MainUserData: {},
+            mainUserData: {},
         };
     },
     computed: {
-        ...mapGetters('auth', ['GetAuthData']),
+        ...mapGetters('auth', ['getAuthData']),
         ...mapGetters('realTimeChat', ['getPrivateMessages', 'getOnlineFriends', 'getMessageReceivedTick']),
     },
     watch: {
@@ -87,23 +87,23 @@ export default {
         },
     },
     async mounted() {
-        this.MainUserData = this.GetAuthData.result;
+        this.mainUserData = this.getAuthData.result;
         // Connection lifecycle is now owned by NavBar (mounted on every
         // page), so the socket stays alive across navigation. This call is
         // a harmless no-op if already connected (the store guards against
         // opening a second connection).
-        this.GetUsList();
+        this.getContactsList();
     },
     // No beforeUnmount closing the connection anymore - leaving the Chat
     // page must not kill realtime updates for the rest of the app.
     methods: {
         ...mapActions('chat', [
-            'GetUnreadMessageNum',
-            'GetChatMsgsBetweenTwoUsers',
-            'SendMessage',
-            'MarkMsgsAsReaded',
+            'getUnreadMessageNum',
+            'getChatMsgsBetweenTwoUsers',
+            'sendMessage',
+            'markMsgsAsRead',
         ]),
-        ...mapActions('users', ['GetUserFollowersFollowing']),
+        ...mapActions('users', ['getUserFollowersFollowing']),
         ...mapActions('realTimeChat', [
             'sendPrivateMessage',
         ]),
@@ -116,16 +116,16 @@ export default {
         handleScroll() {
             const container = this.$refs.messageContainer;
             if (container.scrollTop === 0) {
-                this.GetOldestMessgesBetweenUsers();
+                this.getOldestMessagesBetweenUsers();
             }
         },
 
-        async GetOldestMessgesBetweenUsers() {
+        async getOldestMessagesBetweenUsers() {
             this.messagelistnum = this.messagelistnum + 1;
-            const firstuid = this.MainUserData._id;
+            const firstuid = this.mainUserData._id;
             const seconduid = this.selectedUser._id;
             const from = this.messagelistnum;
-            const { msgs } = await this.GetChatMsgsBetweenTwoUsers({ from, firstuid, seconduid });
+            const { msgs } = await this.getChatMsgsBetweenTwoUsers({ from, firstuid, seconduid });
             if (msgs && msgs.length) {
                 const existingIds = new Set(this.messageBetweenUsers.map((m) => String(m._id)));
                 const newOnes = msgs.filter((m) => !existingIds.has(String(m._id)));
@@ -169,7 +169,7 @@ export default {
             let guard = 0; // safety limit so a backend bug can't loop forever
             while (container.scrollHeight <= container.clientHeight && guard < 20) {
                 const before = this.messageBetweenUsers.length;
-                await this.GetOldestMessgesBetweenUsers();
+                await this.getOldestMessagesBetweenUsers();
                 await this.$nextTick();
                 guard += 1;
                 // no more messages returned -> stop trying
@@ -177,45 +177,45 @@ export default {
             }
         },
 
-        async CallMarkMsgAsReaded(user) {
-            const mainuid = this.MainUserData._id;
+        async markConversationAsRead(user) {
+            const mainuid = this.mainUserData._id;
             const otheruid = user._id;
             let unreadCount = 0;
 
             this.contacts.forEach((c) => {
-                if (String(otheruid) === String(c._id)) unreadCount = c.unReadedmessage;
+                if (String(otheruid) === String(c._id)) unreadCount = c.unreadMessage;
             });
 
-            const { isMarked } = await this.MarkMsgsAsReaded({
+            const { isMarked } = await this.markMsgsAsRead({
                 mainuid,
                 otheruid,
-                GetunReadedmessage: unreadCount,
+                unreadMessageCount: unreadCount,
             });
 
             if (isMarked) {
                 this.contacts.forEach((c) => {
-                    if (String(otheruid) === String(c._id)) c.unReadedmessage = 0;
+                    if (String(otheruid) === String(c._id)) c.unreadMessage = 0;
                 });
             }
         },
 
-        async GetUnreadedMsgList() {
-            const { messages } = await this.GetUnreadMessageNum(this.MainUserData._id);
+        async getUnreadMsgList() {
+            const { messages } = await this.getUnreadMessageNum(this.mainUserData._id);
             this.contacts.forEach((c) => {
                 messages.forEach((msg) => {
                     if (String(msg.otherUserid) === String(c._id)) {
-                        c.unReadedmessage = Number(msg.numOfUnreadMessages);
+                        c.unreadMessage = Number(msg.numOfUnreadMessages);
                     }
                 });
             });
         },
 
-        async GetUsList() {
+        async getContactsList() {
             this.contacts = [];
-            const glist = await this.GetUserFollowersFollowing();
+            const glist = await this.getUserFollowersFollowing();
             this.contacts = glist || [];
             if (this.contacts.length) {
-                this.GetUnreadedMsgList();
+                this.getUnreadMsgList();
             }
         },
 
@@ -226,15 +226,15 @@ export default {
             this.selectedUser = user;
             this.messagelistnum = 0;
 
-            const firstuid = this.MainUserData._id;
+            const firstuid = this.mainUserData._id;
             const seconduid = user._id;
-            const { msgs } = await this.GetChatMsgsBetweenTwoUsers({ from: 0, firstuid, seconduid });
+            const { msgs } = await this.getChatMsgsBetweenTwoUsers({ from: 0, firstuid, seconduid });
             this.messageBetweenUsers.push(...(msgs || []));
 
             this.$nextTick(async () => {
                 await this.fillContainerIfNeeded();
                 this.scrollDownFunction();
-                this.CallMarkMsgAsReaded(user);
+                this.markConversationAsRead(user);
             });
         },
 
@@ -246,37 +246,37 @@ export default {
             const lastMsg = messages[messages.length - 1];
 
             // We already show our own outgoing messages optimistically in
-            // Sendmessage(). If the server echoes them back to us over the
+            // handleSendMessage(). If the server echoes them back to us over the
             // socket, skip here - otherwise it shows up as a duplicate
             // bubble (dedupe-by-createdAt can miss it since the server may
             // assign its own createdAt/_id different from our local copy).
-            if (String(lastMsg.sender) === String(this.MainUserData._id)) {
+            if (String(lastMsg.sender) === String(this.mainUserData._id)) {
                 return;
             }
 
             if (this.selectedUser) {
                 const isCurrentConversation =
                     String(lastMsg.sender) === String(this.selectedUser._id) &&
-                    String(lastMsg.receiver) === String(this.MainUserData._id);
+                    String(lastMsg.receiver) === String(this.mainUserData._id);
 
                 if (isCurrentConversation) {
                     const wasAdded = this.addMessageIfNew(lastMsg);
                     if (wasAdded) this.$nextTick(() => this.scrollDownFunction());
-                    this.CallMarkMsgAsReaded(this.selectedUser);
+                    this.markConversationAsRead(this.selectedUser);
                     return;
                 }
             }
             // message belongs to another conversation -> just refresh unread badges
-            this.GetUnreadedMsgList();
+            this.getUnreadMsgList();
         },
 
-        async Sendmessage() {
+        async handleSendMessage() {
             const text = this.messageToSend.text.trim();
             if (!text || !this.selectedUser) return;
 
             const message = {
                 content: text,
-                sender: this.MainUserData._id,
+                sender: this.mainUserData._id,
                 receiver: this.selectedUser._id,
                 createdAt: new Date().toISOString(),
             };
@@ -295,14 +295,14 @@ export default {
                     // silently drop the message without saving it (it
                     // returns early when there's no connection). REST is
                     // the only path that guarantees persistence here.
-                    await this.SendMessage(message);
+                    await this.sendMessage(message);
                 }
 
                 // show immediately in our own UI
                 this.addMessageIfNew(message);
                 this.$nextTick(() => this.scrollDownFunction());
             } catch (error) {
-                console.error('Sendmessage error:', error);
+                console.error('handleSendMessage error:', error);
             }
         },
     },

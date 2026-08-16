@@ -55,7 +55,7 @@ export default {
     }
   },
   methods: {
-    ...mapActions('users', ['UpdateUserData']),
+    ...mapActions('users', ['updateUserData']),
     convertToBase64() {
       if (!this.file) return
       const reader = new FileReader()
@@ -79,7 +79,7 @@ export default {
           imageUrl: this.localUserData.imageUrl
         }
 
-        const update = await this.UpdateUserData(userdata)
+        const update = await this.updateUserData(userdata)
 
         if (update?.data) {
           this.$emit('update-user', { data: update.data })

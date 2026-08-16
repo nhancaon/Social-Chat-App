@@ -5,7 +5,7 @@ function initialState() {
     isLoading: true,
     post: null,
     posts: [],
-    SearchResult: [],
+    searchResults: [],
   }
 }
 
@@ -14,10 +14,10 @@ const Posts = {
   state: initialState(),
 
   getters: {
-    GetPost: (state) => state.post,
-    GetAllPosts: (state) => state.posts,
-    GetSearchData: (state) => state.SearchResult,
-    GetIsLoading: (state) => state.isLoading,
+    getCurrentPost: (state) => state.post,
+    getAllPosts: (state) => state.posts,
+    getSearchResults: (state) => state.searchResults,
+    isLoading: (state) => state.isLoading,
   },
 
   mutations: {
@@ -43,7 +43,7 @@ const Posts = {
       state.posts = state.posts.filter((p) => p._id !== id);
     },
     SET_SEARCH(state, payload) {
-      state.SearchResult = payload;
+      state.searchResults = payload;
     },
     RESET_STATE(state) {
       Object.assign(state, initialState())
@@ -128,20 +128,20 @@ const Posts = {
       }
     },
 
-    async likePostByUser({ commit }, id) {
+    async likePost({ commit }, id) {
       try {
         const { data } = await api.likePost(id);
         commit('UPDATE_POST_IN_LIST', data.data);
         return data.data;
       } catch (error) {
-        console.error('likePostByUser error:', error);
+        console.error('likePost error:', error);
         throw error;
       }
     },
 
     async commentPost({ commit }, form) {
       try {
-        const { data } = await api.comment(form.value, form.id);
+        const { data } = await api.commentPost(form.value, form.id);
         commit('UPDATE_POST_IN_LIST', data.data);
         return data.data;
       } catch (error) {
