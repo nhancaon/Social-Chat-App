@@ -6,7 +6,7 @@ type UserModel struct {
 	ID        primitive.ObjectID `json:"_id,omitempty" bson:"_id,omitempty"`
 	Name      string             `json:"name" bson:"name"`
 	Email     string             `json:"email" bson:"email" validate:"required"`
-	Password  string             `json:"password,omitempty" bson:"password" validate:"required,min=5"`
+	Password  string             `json:"-" bson:"password" validate:"required,min=5"`
 	ImageUrl  string             `json:"imageUrl" bson:"imageUrl"`
 	Bio       string             `json:"bio" bson:"bio"`
 	Followers []string           `json:"followers" bson:"followers"`

@@ -2,11 +2,13 @@ package controllers
 
 import (
 	"Server/database"
+	"Server/middleware"
 	"Server/models"
 	"context"
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
@@ -82,7 +84,6 @@ func Register(c *fiber.Ctx) error {
 
 	// Không cần query lại DB — gán trực tiếp ID vừa được Mongo sinh ra
 	newUser.ID = result.InsertedID.(primitive.ObjectID)
-	newUser.Password = ""
 
 	// create the token
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -151,8 +152,6 @@ func Login(c *fiber.Ctx) error {
 		})
 	}
 
-	existingUser.Password = "" // remove password from response
-
 	// create the token
 	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"sub": existingUser.ID.Hex(),
@@ -169,5 +168,69 @@ func Login(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusCreated).JSON(fiber.Map{
 		"result": existingUser,
 		"token":  token,
+	})
+}
+
+// Refresh User Data
+// @Summary refresh user data and token
+// @Description  refresh user data and issue a new token
+// @Tags Authentication
+// @Accept json
+// @Produce json
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} map[string]interface{}
+// @Router /user/refresh [get]
+func RefreshUser(c *fiber.Ctx) error {
+	var UserSchema = database.DB.Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "Missing Authorization header",
+		})
+	}
+
+	tokenString := strings.Replace(authHeader, "Bearer ", "", 1)
+
+	subUserID, err := middleware.ParseUserToken(tokenString)
+	if err != nil {
+		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
+			"error": "invalid or expired token",
+		})
+	}
+
+	userID, err := primitive.ObjectIDFromHex(subUserID)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "invalid user id in token",
+		})
+	}
+
+	var user models.UserModel
+	err = UserSchema.FindOne(ctx, bson.M{"_id": userID}).Decode(&user)
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "user not found",
+		})
+	}
+
+	// issue a fresh token, same claim shape as signin/signup
+	newClaims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"sub": user.ID.Hex(),
+		"exp": time.Now().Add(time.Hour * 24).Unix(),
+	})
+
+	newToken, err := newClaims.SignedString([]byte(os.Getenv("JWT_SECRET")))
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "failed to generate token",
+		})
+	}
+
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{
+		"result": user,
+		"token":  newToken,
 	})
 }

@@ -1,83 +1,68 @@
 package realtime
 
 import (
+	"Server/kafka"
 	"log"
 	"sync"
-	"time"
 
 	"github.com/gofiber/websocket/v2"
 )
 
-type Notification struct {
-	ID        string    `json:"_id"`
-	Details   string    `json:"details"`
-	MainUID   string    `json:"mainuid"`
-	TargetID  string    `json:"targetid"`
-	IsReaded  bool      `json:"isreded"`
-	CraetedAt time.Time `json:"createdAt"`
-	User      User      `json:"user"`
+type NotificationHub struct {
+	connections         map[string]*websocket.Conn
+	lock                sync.RWMutex
+	notificationManager *kafka.NotificationManager
 }
 
-type User struct {
-	Name     string `json:"name"`
-	ImageUrl string `json:"imageUrl"`
-}
+var notificationHubInstance *NotificationHub
 
-type NotificationManager struct {
-	connections map[string]*websocket.Conn
-	lock        sync.RWMutex
-	kafkaMgr    *KafkaNotificationBridge
-}
+func InitNotificationHub(kafkaAddr, nodeID string) error {
+	notificationHub := &NotificationHub{
+		connections: make(map[string]*websocket.Conn),
+	}
 
-var notificationManager *NotificationManager
-
-func InitNotificationManger(kafkaAddr, nodeID string) error {
-	bridge, err := NewKafkaNotificationBridge(kafkaAddr, nodeID)
+	notificationManager, err := kafka.NewNotificationManager(kafkaAddr, nodeID, notificationHub)
 	if err != nil {
 		return err
 	}
+	notificationHub.notificationManager = notificationManager
 
-	notificationManager = &NotificationManager{
-		connections: make(map[string]*websocket.Conn),
-		kafkaMgr:    bridge,
-	}
-
-	bridge.SetDeliveryHandler(notificationManager)
+	notificationHubInstance = notificationHub
 	return nil
 }
 
-func GetNotificationManager() *NotificationManager {
-	return notificationManager
+func GetNotificationHub() *NotificationHub {
+	return notificationHubInstance
 }
 
-func (nm *NotificationManager) AddNotificationConnection(userID string, conn *websocket.Conn) {
-	nm.lock.Lock()
-	defer nm.lock.Unlock()
+func (nh *NotificationHub) AddNotificationConnection(userID string, conn *websocket.Conn) {
+	nh.lock.Lock()
+	defer nh.lock.Unlock()
 
 	// close old conn
-	if oldConn, exists := nm.connections[userID]; exists {
+	if oldConn, exists := nh.connections[userID]; exists {
 		oldConn.Close()
 	}
-	nm.connections[userID] = conn
+	nh.connections[userID] = conn
 	log.Printf("User %s connected to notitificaton server", userID)
 }
 
-func (nm *NotificationManager) RemoveNotificationConnection(userID string) {
-	nm.lock.Lock()
-	defer nm.lock.Unlock()
+func (nh *NotificationHub) RemoveNotificationConnection(userID string) {
+	nh.lock.Lock()
+	defer nh.lock.Unlock()
 
-	delete(nm.connections, userID)
+	delete(nh.connections, userID)
 	log.Printf("User %s disconnected from notitificaton server", userID)
 }
 
-func (nm *NotificationManager) SendNotificatonToUser(userID string, notifiaton Notification) error {
-	return nm.kafkaMgr.PublishNotification(userID, notifiaton)
+func (nh *NotificationHub) SendNotificatonToUser(userID string, notifiaton kafka.Notification) error {
+	return nh.notificationManager.PublishNotification(userID, notifiaton)
 }
 
-func (nm *NotificationManager) DeliverToLocalClient(userID string, notification Notification) {
-	nm.lock.RLock()
-	conn, exists := nm.connections[userID]
-	nm.lock.RUnlock()
+func (nh *NotificationHub) DeliverToLocalClient(userID string, notification kafka.Notification) {
+	nh.lock.RLock()
+	conn, exists := nh.connections[userID]
+	nh.lock.RUnlock()
 
 	if !exists {
 		log.Printf("User %s not connected to this node", userID)
@@ -87,25 +72,25 @@ func (nm *NotificationManager) DeliverToLocalClient(userID string, notification 
 	err := conn.WriteJSON(notification)
 	if err != nil {
 		log.Printf("Error sending notifcation to user %s: %v", userID, err)
-		nm.RemoveNotificationConnection(userID)
+		nh.RemoveNotificationConnection(userID)
 		return
 	}
 	log.Printf("Notification deliverd to user %s : %s", userID, notification.Details)
 }
 
-func (nm *NotificationManager) GetConnectedUsers() []string {
-	nm.lock.RLock()
-	defer nm.lock.RUnlock()
+func (nh *NotificationHub) GetConnectedUsers() []string {
+	nh.lock.RLock()
+	defer nh.lock.RUnlock()
 
-	users := make([]string, 0, len(nm.connections))
-	for userID := range nm.connections {
+	users := make([]string, 0, len(nh.connections))
+	for userID := range nh.connections {
 		users = append(users, userID)
 	}
 	return users
 }
 
-func (nm *NotificationManager) Close() {
-	if nm.kafkaMgr != nil {
-		nm.kafkaMgr.Close()
+func (nh *NotificationHub) Close() {
+	if nh.notificationManager != nil {
+		nh.notificationManager.Close()
 	}
 }

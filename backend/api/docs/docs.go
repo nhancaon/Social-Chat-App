@@ -128,7 +128,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "mark messages as read for user, updates the record to isReaded=true, count=0",
+                "description": "mark messages as read for user, updates the record to isReadMessage=true, count=0",
                 "consumes": [
                     "application/json"
                 ],
@@ -226,7 +226,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "MarkNotAsReaded",
+                "description": "MarkNotificationAsRead",
                 "consumes": [
                     "application/json"
                 ],
@@ -616,7 +616,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/models.ComnmentPost"
+                            "$ref": "#/definitions/models.CommentPost"
                         }
                     }
                 ],
@@ -681,6 +681,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/posts/{postId}/comments/{commentId}": {
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a comment by id. Only the comment's author or the post's creator may delete it",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Posts"
+                ],
+                "summary": "Delete a comment",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Post Id",
+                        "name": "postId",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Comment Id",
+                        "name": "commentId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
         "/user/Update/{id}": {
             "patch": {
                 "security": [
@@ -688,7 +740,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "update user deatils",
+                "description": "update user details",
                 "consumes": [
                     "application/json"
                 ],
@@ -708,7 +760,7 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "deatils ",
+                        "description": "details ",
                         "name": "user",
                         "in": "body",
                         "required": true,
@@ -828,7 +880,7 @@ const docTemplate = `{
         },
         "/user/getUser/{id}": {
             "get": {
-                "description": "GetUser Deatils By ID",
+                "description": "GetUser Details By ID",
                 "consumes": [
                     "application/json"
                 ],
@@ -857,6 +909,37 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    }
+                }
+            }
+        },
+        "/user/refresh": {
+            "get": {
+                "description": "refresh user data and issue a new token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "refresh user data and token",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
                             "additionalProperties": true
@@ -994,12 +1077,35 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "models.ComnmentPost": {
+        "models.CommentPost": {
             "type": "object",
             "required": [
                 "value"
             ],
             "properties": {
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "models.CommentUser": {
+            "type": "object",
+            "properties": {
+                "_id": {
+                    "type": "string"
+                },
+                "createdAt": {
+                    "type": "string"
+                },
+                "postId": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/models.UserModel"
+                },
+                "userId": {
+                    "type": "string"
+                },
                 "value": {
                     "type": "string"
                 }
@@ -1081,7 +1187,7 @@ const docTemplate = `{
                 "comments": {
                     "type": "array",
                     "items": {
-                        "type": "string"
+                        "$ref": "#/definitions/models.CommentUser"
                     }
                 },
                 "createdAt": {
@@ -1158,8 +1264,7 @@ const docTemplate = `{
         "models.UserModel": {
             "type": "object",
             "required": [
-                "email",
-                "password"
+                "email"
             ],
             "properties": {
                 "_id": {
@@ -1188,10 +1293,6 @@ const docTemplate = `{
                 },
                 "name": {
                     "type": "string"
-                },
-                "password": {
-                    "type": "string",
-                    "minLength": 5
                 }
             }
         }

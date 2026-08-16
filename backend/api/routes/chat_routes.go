@@ -16,10 +16,10 @@ func SetupChatRoutes(app *fiber.App) {
 	chat.Get("/mark-msg-asreaded", controllers.MarkMessageAsRead)
 
 	app.Get("/chat/ws", middleware.WSAuthMiddleware, func(c *fiber.Ctx) error {
-		hub := realtime.GetChatHub()
-		if hub == nil {
+		chatHub := realtime.GetChatHub()
+		if chatHub == nil {
 			return fiber.NewError(fiber.StatusServiceUnavailable, "chat service not ready")
 		}
-		return hub.HandleClient(c)
+		return chatHub.HandleClient(c)
 	})
 }

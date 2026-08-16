@@ -39,11 +39,6 @@ func main() {
 		port = "5000"
 	}
 
-	grpcPort := os.Getenv("GRPC_PORT")
-	if grpcPort == "" {
-		grpcPort = "5001"
-	}
-
 	nodeID := flag.String("node_id", "", "Unique identifier for this node")
 	kafkaAddr := flag.String("kafka", "127.0.0.1:29092", "kafka address")
 	flag.Parse()
@@ -66,31 +61,19 @@ func main() {
 	}
 	time.Sleep(3 * time.Second) // give topic metadata time to propagate across brokers
 
-	hub, err := realtime.InitChatHub(*kafkaAddr, resolvedNodeID)
+	chatHub, err := realtime.InitChatHub(*kafkaAddr, resolvedNodeID)
 	if err != nil {
 		log.Fatalf("failed to start chat hub: %v", err)
 	}
 
-	if err := realtime.InitNotificationManger(*kafkaAddr, resolvedNodeID); err != nil {
+	if err := realtime.InitNotificationHub(*kafkaAddr, resolvedNodeID); err != nil {
 		log.Fatalf("failed to start notification manager: %v", err)
 	}
 
-	heartbeatMgr, err := kafka.NewHeartbeatManager(*kafkaAddr, resolvedNodeID, hub)
+	heartbeatMgr, err := kafka.NewHeartbeatManager(*kafkaAddr, resolvedNodeID, chatHub)
 	if err != nil {
 		log.Fatalf("failed to start heartbeat manager: %v", err)
 	}
-
-	grpcServer, grpcListener, err := server.NewGRPCServer(grpcPort)
-	if err != nil {
-		log.Fatalf("%v", err)
-	}
-
-	go func() {
-		log.Printf("gRPC server running on port %s", grpcPort)
-		if err := grpcServer.Serve(grpcListener); err != nil {
-			log.Printf("gRPC server stopped: %v", err)
-		}
-	}()
 
 	app := server.NewHTTPServer()
 
@@ -121,11 +104,10 @@ func main() {
 		log.Printf("HTTP server forced to shutdown: %v", err)
 	}
 
-	grpcServer.GracefulStop()
 	heartbeatMgr.Stop()
-	hub.Close()
-	if nm := realtime.GetNotificationManager(); nm != nil {
-		nm.Close()
+	chatHub.Close()
+	if notificationHub := realtime.GetNotificationHub(); notificationHub != nil {
+		notificationHub.Close()
 	}
 	database.CloseRedis()
 

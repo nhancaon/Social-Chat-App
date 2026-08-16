@@ -12,7 +12,7 @@ func SetupUserRoutes(app *fiber.App) {
 	app.Get("/user/getSug", controllers.GetSuggestedUsers)
 	app.Post("/user/batch", middleware.AuthMiddleware, controllers.GetUsersByIDs)
 	app.Patch("/user/Update/:id", middleware.AuthMiddleware, controllers.UpdateUser)
-	app.Patch("/user/:id/following", middleware.AuthMiddleware, controllers.FollowingUser)
+	app.Patch("/user/:id/following", middleware.AuthMiddleware, controllers.ToggleFollowUser)
 	app.Delete("/user/delete/:id", middleware.AuthMiddleware, controllers.DeleteUser)
 
 }

@@ -26,7 +26,7 @@ type CreateOrUpdatePost struct {
 }
 
 // interfaces
-type ComnmentPost struct {
+type CommentPost struct {
 	Value string `json:"value" bson:"value" validate:"required"`
 }
 

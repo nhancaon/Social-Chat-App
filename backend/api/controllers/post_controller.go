@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"Server/database"
-	"Server/gapi"
 	"Server/models"
 	"context"
 	"encoding/json"
@@ -511,7 +510,7 @@ func GetPostsUsersBySearch(c *fiber.Ctx) error {
 // @Accept json
 // @Produce json
 // @Param id path string true "Post Id"
-// @Param post body models.ComnmentPost true "comment value"
+// @Param post body models.CommentPost true "comment value"
 // @Success 200 {object} models.PostModel
 // @Failure 400 {object} map[string]interface{}
 // @Security BearerAuth
@@ -546,7 +545,7 @@ func CommentPost(c *fiber.Ctx) error {
 		})
 	}
 
-	var b models.ComnmentPost
+	var b models.CommentPost
 	if err := c.BodyParser(&b); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
 			"error":   "Invalid request body",
@@ -598,8 +597,8 @@ func CommentPost(c *fiber.Ctx) error {
 				})
 			}
 			notification.ID = res.InsertedID.(primitive.ObjectID)
-			//call grpc function to send notification to the user
-			gapi.SendNotification(notification)
+			//push notification to the user in realtime
+			publishNotification(notification)
 		}
 	}
 
@@ -697,8 +696,8 @@ func LikePost(c *fiber.Ctx) error {
 						})
 					}
 					notification.ID = res.InsertedID.(primitive.ObjectID)
-					//call grpc function to send notification to the user
-					gapi.SendNotification(notification)
+					//push notification to the user in realtime
+					publishNotification(notification)
 				}
 			}
 		}

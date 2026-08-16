@@ -1,11 +1,26 @@
 basePath: /
 definitions:
-  models.ComnmentPost:
+  models.CommentPost:
     properties:
       value:
         type: string
     required:
     - value
+    type: object
+  models.CommentUser:
+    properties:
+      _id:
+        type: string
+      createdAt:
+        type: string
+      postId:
+        type: string
+      user:
+        $ref: '#/definitions/models.UserModel'
+      userId:
+        type: string
+      value:
+        type: string
     type: object
   models.CreateOrUpdatePost:
     properties:
@@ -57,7 +72,7 @@ definitions:
         type: string
       comments:
         items:
-          type: string
+          $ref: '#/definitions/models.CommentUser'
         type: array
       createdAt:
         type: string
@@ -126,12 +141,8 @@ definitions:
         type: string
       name:
         type: string
-      password:
-        minLength: 5
-        type: string
     required:
     - email
-    - password
     type: object
 host: localhost:5000
 info:
@@ -213,7 +224,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: mark messages as read for user, updates the record to isReaded=true,
+      description: mark messages as read for user, updates the record to isReadMessage=true,
         count=0
       parameters:
       - description: main user id
@@ -306,7 +317,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: MarkNotAsReaded
+      description: MarkNotificationAsRead
       parameters:
       - description: User ID
         in: query
@@ -496,7 +507,7 @@ paths:
         name: post
         required: true
         schema:
-          $ref: '#/definitions/models.ComnmentPost'
+          $ref: '#/definitions/models.CommentPost'
       produces:
       - application/json
       responses:
@@ -540,6 +551,41 @@ paths:
       security:
       - BearerAuth: []
       summary: like or unlike a post
+      tags:
+      - Posts
+  /posts/{postId}/comments/{commentId}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete a comment by id. Only the comment's author or the post's
+        creator may delete it
+      parameters:
+      - description: Post Id
+        in: path
+        name: postId
+        required: true
+        type: string
+      - description: Comment Id
+        in: path
+        name: commentId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete a comment
       tags:
       - Posts
   /posts/search:
@@ -604,14 +650,14 @@ paths:
     patch:
       consumes:
       - application/json
-      description: update user deatils
+      description: update user details
       parameters:
       - description: User ID
         in: path
         name: id
         required: true
         type: string
-      - description: 'deatils '
+      - description: 'details '
         in: body
         name: user
         required: true
@@ -697,7 +743,7 @@ paths:
     get:
       consumes:
       - application/json
-      description: GetUser Deatils By ID
+      description: GetUser Details By ID
       parameters:
       - description: User ID
         in: path
@@ -719,6 +765,27 @@ paths:
       summary: Get User By ID
       tags:
       - Users
+  /user/refresh:
+    get:
+      consumes:
+      - application/json
+      description: refresh user data and issue a new token
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties: true
+            type: object
+      summary: refresh user data and token
+      tags:
+      - Authentication
   /user/signin:
     post:
       consumes:

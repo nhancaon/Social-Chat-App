@@ -37,10 +37,24 @@ func WSAuthMiddleware(c *fiber.Ctx) error {
 }
 
 func authenticate(c *fiber.Ctx, tokenStr string) error {
-	if tokenStr == "" {
+	userID, err := ParseUserToken(tokenStr)
+	if err != nil {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"message": "unauthenticated",
 		})
+	}
+
+	c.Locals("userId", userID)
+	return c.Next()
+}
+
+// ParseUserToken validates tokenStr (no "Bearer " prefix) and returns the
+// user id carried in its "sub" claim. Shared by the HTTP/WS middlewares
+// above and by any handler that needs to re-validate a token directly
+// (e.g. a token-refresh endpoint).
+func ParseUserToken(tokenStr string) (string, error) {
+	if tokenStr == "" {
+		return "", errors.New("missing token")
 	}
 
 	secretKey := os.Getenv("JWT_SECRET")
@@ -54,18 +68,13 @@ func authenticate(c *fiber.Ctx, tokenStr string) error {
 	})
 
 	if err != nil || !parsedToken.Valid {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message": "unauthenticated",
-		})
+		return "", errors.New("invalid or expired token")
 	}
 
 	claims, ok := parsedToken.Claims.(*jwt.RegisteredClaims)
-	if !ok {
-		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
-			"message": "unauthenticated",
-		})
+	if !ok || claims.Subject == "" {
+		return "", errors.New("invalid token claims")
 	}
 
-	c.Locals("userId", claims.Subject)
-	return c.Next()
+	return claims.Subject, nil
 }

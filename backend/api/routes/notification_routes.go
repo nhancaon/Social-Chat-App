@@ -13,10 +13,10 @@ func SetupNotificationRoutes(app *fiber.App) {
 	app.Get("/notification/:userid", middleware.AuthMiddleware, controllers.GetUserNotification)
 
 	app.Get("/notification/ws", middleware.WSAuthMiddleware, func(c *fiber.Ctx) error {
-		nm := realtime.GetNotificationManager()
-		if nm == nil {
+		notificationHub := realtime.GetNotificationHub()
+		if notificationHub == nil {
 			return fiber.NewError(fiber.StatusServiceUnavailable, "notification service not ready")
 		}
-		return nm.HandleClient(c)
+		return notificationHub.HandleClient(c)
 	})
 }

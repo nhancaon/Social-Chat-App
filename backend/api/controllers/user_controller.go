@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"Server/database"
-	"Server/gapi"
 	"Server/models"
 	"context"
 	"encoding/json"
@@ -20,7 +19,7 @@ import (
 
 // GetUserBy ID
 // @Summary Get User By ID
-// @Description GetUser Deatils By ID
+// @Description GetUser Details By ID
 // @Tags Users
 // @Accept json
 // @Produce json
@@ -48,9 +47,9 @@ func GetUserByID(c *fiber.Ctx) error {
 		page = 1
 	}
 
-	// Create Cache key for user profile & psots
+	// Create Cache key for user profile & posts
 	cacheKey := fmt.Sprintf("user:profile:%s:page:%d", c.Params("id"), page)
-	// try to get form cache first .. from redis
+	// try to get from cache first .. from redis
 	cachedData, err := database.RedisClient.Get(ctx, cacheKey).Result()
 	if err == nil {
 		var cachedRes models.CachedGetUserResponse
@@ -140,12 +139,12 @@ func GetUserByID(c *fiber.Ctx) error {
 
 // UpdateUser
 // @Summary update user data
-// @Description update user deatils
+// @Description update user details
 // @Tags Users
 // @Accept json
 // @Produce json
 // @Param id path string true "User ID"
-// @Param user body models.UpdateUser true "deatils "
+// @Param user body models.UpdateUser true "details "
 // @Success 201 {object} models.UserModel
 // @Failure 400 {object} map[string]interface{}
 // @security BearerAuth
@@ -162,7 +161,7 @@ func UpdateUser(c *fiber.Ctx) error {
 	if extUid != c.Params("id") {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
-			"message": "You Are Not Authroized to Update This Profile",
+			"message": "You Are Not Authorized to Update This Profile",
 		})
 	}
 
@@ -172,7 +171,7 @@ func UpdateUser(c *fiber.Ctx) error {
 	if err := c.BodyParser(&user); err != nil {
 		return c.Status(fiber.StatusBadGateway).JSON(fiber.Map{
 			"error":   "Invalid request body",
-			"deatils": err.Error(),
+			"details": err.Error(),
 		})
 	}
 
@@ -183,16 +182,16 @@ func UpdateUser(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"error":   "cannot update the user data",
-			"deatils": err.Error(),
+			"details": err.Error(),
 		})
 	}
 	//
-	var updateUsser models.UserModel
+	var updatedUser models.UserModel
 	if result.MatchedCount == 1 {
-		err := UserSchema.FindOne(ctx, bson.M{"_id": userid}).Decode(&updateUsser)
+		err := UserSchema.FindOne(ctx, bson.M{"_id": userid}).Decode(&updatedUser)
 		if err != nil {
 			return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-				"deatils": err.Error(),
+				"details": err.Error(),
 			})
 		}
 	}
@@ -218,11 +217,11 @@ func UpdateUser(c *fiber.Ctx) error {
 		}
 	}()
 
-	return c.Status(fiber.StatusOK).JSON(fiber.Map{"data": updateUsser})
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"data": updatedUser})
 
 }
 
-// Following Users
+// Toggle Follow User
 // @Summary Follow/UnFollow User
 // @Description follow or un follow a user
 // @Tags Users
@@ -233,7 +232,7 @@ func UpdateUser(c *fiber.Ctx) error {
 // @Failure 400 {object} map[string]interface{}
 // @security BearerAuth
 // @Router /user/{id}/following [patch]
-func FollowingUser(c *fiber.Ctx) error {
+func ToggleFollowUser(c *fiber.Ctx) error {
 
 	var UserSchema = database.DB.Collection("users")
 	var NotificationSchema = database.DB.Collection("notifications")
@@ -329,8 +328,8 @@ func FollowingUser(c *fiber.Ctx) error {
 
 		//set the id field of the notification to the inserted id
 		notification.ID = res.InsertedID.(primitive.ObjectID)
-		//call grpc function to send notification to the user
-		gapi.SendNotification(notification)
+		//push notification to the user in realtime
+		publishNotification(notification)
 	}
 
 	// Lấy lại data mới nhất sau khi update
@@ -492,7 +491,7 @@ func DeleteUser(c *fiber.Ctx) error {
 	if extUid != c.Params("id") {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{
 			"success": false,
-			"message": "You Are Not Authroized to Delete This User",
+			"message": "You Are Not Authorized to Delete This User",
 		})
 	}
 
@@ -510,7 +509,7 @@ func DeleteUser(c *fiber.Ctx) error {
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
 			"success": false,
-			"message": "faild to delete user",
+			"message": "failed to delete user",
 			"error":   err.Error(),
 		})
 	}
@@ -521,7 +520,7 @@ func DeleteUser(c *fiber.Ctx) error {
 			"message": "user not found",
 		})
 	}
-	// sucuss
+	// success
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{
 		"success": true,
 		"message": "User Deleted Successfully!",

@@ -26,37 +26,37 @@ func GetChatHub() *ChatHub {
 // InitChatHub creates the process-wide ChatHub and makes it available via
 // GetChatHub.
 func InitChatHub(kafkaAddr, nodeID string) (*ChatHub, error) {
-	hub, err := NewChatHub(kafkaAddr, nodeID)
+	chatHub, err := NewChatHub(kafkaAddr, nodeID)
 	if err != nil {
 		return nil, err
 	}
-	chatHubInstance = hub
-	return hub, nil
+	chatHubInstance = chatHub
+	return chatHub, nil
 }
 
 func NewChatHub(kafkaAddr, nodeID string) (*ChatHub, error) {
-	hub := &ChatHub{
+	chatHub := &ChatHub{
 		clients:        make(map[string]*Client),
 		nodeID:         nodeID,
 		getUserFriends: GetUserFriends,
 	}
 
-	statusManager, err := kafka.NewStatusManager(kafkaAddr, nodeID, hub)
+	statusManager, err := kafka.NewStatusManager(kafkaAddr, nodeID, chatHub)
 	if err != nil {
 		return nil, err
 	}
 
-	hub.statusManager = statusManager
+	chatHub.statusManager = statusManager
 
-	messageManager, err := kafka.NewMessageManager(kafkaAddr, nodeID, hub)
+	messageManager, err := kafka.NewMessageManager(kafkaAddr, nodeID, chatHub)
 	if err != nil {
 		statusManager.Close()
 		return nil, err
 	}
-	hub.messageManager = messageManager
+	chatHub.messageManager = messageManager
 
 	log.Printf("%s Chat hub ready", nodeID)
-	return hub, nil
+	return chatHub, nil
 }
 
 func (h *ChatHub) RegisterClient(userID string, conn *websocket.Conn) *Client {

@@ -54,7 +54,7 @@ func SendMessage(c *fiber.Ctx) error {
 	}
 	if body.Receiver == "" {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "recever is required",
+			"error": "receiver is required",
 		})
 	}
 	if body.Receiver == userID {
@@ -197,7 +197,7 @@ func GetMessagesByPage(c *fiber.Ctx) error {
 	})
 }
 
-// GetUserUnreadedMsg
+// GetUserUnreadMsg
 // @Summary Get unread message count & records for user
 // @Description Get unread message count & records for user
 // @Tags Chat

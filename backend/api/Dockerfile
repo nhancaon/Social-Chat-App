@@ -2,10 +2,6 @@
 FROM golang:1.26.4 AS builder
 WORKDIR /usr/src/app
 
-# Shared gRPC contracts (single source of truth, used by all backend services
-# via a "replace SocialChatProtos => ../protos" in each service's go.mod)
-COPY backend/protos ./backend/protos
-
 COPY backend/api/go.mod backend/api/go.sum ./backend/api/
 WORKDIR /usr/src/app/backend/api
 RUN go mod download

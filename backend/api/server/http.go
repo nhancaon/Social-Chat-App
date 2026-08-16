@@ -31,7 +31,7 @@ func NewHTTPServer() *fiber.App {
 	))
 
 	app.Get("/", func(c *fiber.Ctx) error {
-		return c.SendString("Welcome to Socail app")
+		return c.SendString("Welcome to Social app")
 	})
 
 	routes.SetupAuthRoutes(app)
