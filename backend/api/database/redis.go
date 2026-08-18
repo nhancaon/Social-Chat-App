@@ -2,8 +2,10 @@ package database
 
 import (
 	"context"
+	"crypto/tls"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -12,14 +14,23 @@ import (
 var RedisClient *redis.Client
 
 func InitRedis() {
-	RedisClient = redis.NewClient(&redis.Options{
+	opts := &redis.Options{
 		Addr:         os.Getenv("REDIS_ADDR"),
 		Password:     os.Getenv("REDIS_PASSWORD"),
 		DB:           0,
 		PoolSize:     10,
 		MinIdleConns: 5,
 		Protocol:     2,
-	})
+	}
+
+	// Managed providers reached over the public internet (e.g. Upstash)
+	// require TLS; self-hosted Redis (docker-compose, in-cluster) doesn't.
+	// Off by default so existing local/self-hosted setups are unaffected.
+	if tlsEnabled, _ := strconv.ParseBool(os.Getenv("REDIS_TLS")); tlsEnabled {
+		opts.TLSConfig = &tls.Config{}
+	}
+
+	RedisClient = redis.NewClient(opts)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()

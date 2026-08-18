@@ -45,3 +45,10 @@ pnpm-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+terraform.tfvars
+*.tfplan

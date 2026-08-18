@@ -1,0 +1,4 @@
+# helm install rancher rancher-latest/rancher --namespace cattle-system -f k8s/helm-values/rancher.yaml
+hostname: rancher.local
+bootstrapPassword: admin
+replicas: 1

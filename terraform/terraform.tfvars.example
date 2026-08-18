@@ -1,0 +1,6 @@
+# Copy to terraform.tfvars and adjust if you want to override the defaults
+# in variables.tf (region, sizing, etc). Not required to just get started —
+# every variable already has a sane default for this lab.
+
+# region       = "ap-southeast-1"
+# cluster_name = "social-chat-lab"
