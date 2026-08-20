@@ -12,6 +12,7 @@ spec:
       containers:
         - name: backend
           image: nhancaon/go-appchat-api:latest
+          command: ["./main"]
           args: ["--kafka=kafka.chat-app.svc.cluster.local:9092"]
           ports: [{ containerPort: 5000 }]
           env:
