@@ -20,10 +20,33 @@ kubectl get nodes
 ```
 
 Kỳ vọng: 2 node `t3.medium`, `STATUS = Ready`. Thấy đúng vậy mới sang mục
-1 — nếu `kubectl get nodes` lỗi `Unauthorized`, khả năng cao bạn đang chạy
-lệnh bằng IAM user/profile khác với user đã `terraform apply` (xem lại
-`enable_cluster_creator_admin_permissions` — chỉ cấp quyền cho đúng danh
-tính đã tạo cluster).
+0.5 — nếu `kubectl get nodes` lỗi `Unauthorized`, khả năng cao bạn đang
+chạy lệnh bằng IAM user/profile khác với user đã `terraform apply` (xem
+lại `enable_cluster_creator_admin_permissions` — chỉ cấp quyền cho đúng
+danh tính đã tạo cluster).
+
+## 0.5. Cài Metrics Server — bắt buộc cho HPA hoạt động
+
+EKS **không tự cài `metrics-server`** (khác k3s trên Rancher host, có sẵn)
+— thiếu nó, `backend-hpa` (mục 3) sẽ báo lỗi
+`FailedGetResourceMetric: ... the server could not find the requested resource (get pods.metrics.k8s.io)`,
+không đọc được CPU usage nên không tự scale được.
+
+```powershell
+kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+```
+
+Kiểm tra:
+
+```powershell
+kubectl get pods -n kube-system -l k8s-app=metrics-server
+kubectl top pods -n chat-app
+```
+
+`kubectl top pods` ra được số liệu là đúng. Nếu Pod `metrics-server` bị
+`CrashLoopBackOff` (đôi khi do chứng chỉ TLS tự ký của kubelet), thêm cờ
+`--kubelet-insecure-tls` vào container args của Deployment
+`metrics-server` (namespace `kube-system`).
 
 ## 1. Import EKS vào Rancher
 
