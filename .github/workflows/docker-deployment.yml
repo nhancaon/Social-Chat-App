@@ -17,12 +17,6 @@ jobs:
           - service: api
             dockerfile: backend/api/Dockerfile
             repo: go-appchat-api
-          - service: realtimeChat
-            dockerfile: backend/realtimeChat/Dockerfile
-            repo: go-rt-chat
-          - service: realtimeNotification
-            dockerfile: backend/realtimeNotification/Dockerfile
-            repo: go-rt-notification
     steps:
       - uses: actions/checkout@v6
         with:
