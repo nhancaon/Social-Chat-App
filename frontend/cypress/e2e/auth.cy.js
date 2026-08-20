@@ -106,8 +106,9 @@ describe("Auth Component Tests", () => {
   describe('Responsive Design', () => {
     it('should maintain layout on different screen sizes', () => {
       cy.viewport(375, 667)
-      // < sm breakpoint: tab switcher active, only the "signin" tab's card is v-show'd
-      cy.get('.q-card').should('have.length', 1)
+      // < sm breakpoint: v-show only hides the inactive tab's card (display: none),
+      // it stays in the DOM — filter to :visible instead of counting all matches
+      cy.get('.q-card:visible').should('have.length', 1)
 
       cy.viewport(768, 1024)
       cy.get('.col-sm-5').should('be.visible')
