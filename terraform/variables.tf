@@ -11,9 +11,9 @@ variable "cluster_name" {
 }
 
 variable "cluster_version" {
-  description = "Kubernetes version for the EKS control plane"
+  description = "Kubernetes version for the EKS control plane — must stay in EKS standard support (check: aws eks describe-cluster-versions --query \"clusterVersions[?status=='STANDARD_SUPPORT']\"), otherwise AWS silently bills extended-support surcharge (~$0.60/hr extra on top of the normal $0.10/hr)"
   type        = string
-  default     = "1.31"
+  default     = "1.34"
 }
 
 variable "vpc_cidr" {

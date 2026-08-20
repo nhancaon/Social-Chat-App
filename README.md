@@ -80,7 +80,7 @@ backend/
     database/                    # MongoDB + Redis clients
   docker-compose.yml      # Kafka (KRaft, multi-broker) + Redis, for native `go run main.go` local dev
 frontend/                # Vue 3 frontend application
-terraform/              # Provisions the AWS EKS lab cluster (see terraform/02-aws-eks.md)
+terraform/              # Provisions the AWS EKS lab cluster + Rancher host (see terraform/03-aws-eks.md)
 k8s/                    # Helm values + manifests + step-by-step guides for Rancher/ArgoCD/EKS deployment
 docker-compose.yml      # MongoDB + Redis + backend + frontend containers, for a full local stack
 mongo.env.example      # MongoDB environment variables for Docker
@@ -220,7 +220,7 @@ npm run cy:run:auth
 Two paths, depending on the goal:
 
 - **Docker Compose** — quick local run, see [Running the Project](#running-the-project) above. For production, update secrets/credentials such as `JWT_SECRET` and MongoDB/Redis authentication values before deploying.
-- **AWS EKS lab** — a cost-optimized, spin-up/tear-down Kubernetes deployment managed with Rancher + ArgoCD, self-hosted Kafka, and Redis (self-hosted or Upstash). Cluster provisioning is Terraform-based. Start at `terraform/02-aws-eks.md` and `k8s/01-local-management.md`; `k8s/03-connect-and-deploy.md` covers wiring the two together.
+- **AWS EKS lab** — a cost-optimized, spin-up/tear-down Kubernetes deployment managed with Rancher (persistent EC2 host) + ArgoCD (local), self-hosted Kafka, and Redis (self-hosted or Upstash). Cluster provisioning is Terraform-based. Start at `k8s/01-local-management.md`, then `terraform/02-rancher-host.md`, then `terraform/03-aws-eks.md`; `k8s/04-connect-and-deploy.md` covers wiring them all together.
 
 ## 🤝 Contributing
 
@@ -239,4 +239,4 @@ This project is currently not licensed. Please specify a license type in the bad
 
 For questions or collaboration, please contact:
 
-- [nhan](caonhan.work@example.com)
+- caonhan.work@gmail.com

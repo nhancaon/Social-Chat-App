@@ -1,15 +1,35 @@
-# Cluster quản lý local — Rancher + ArgoCD
+# Cluster quản lý local — ArgoCD
 
 Ghi lại đúng thứ tự lệnh + giải thích để sau này cài lại (máy mới, hoặc set
 up lại sau khi nghỉ 1 thời gian) không phải nhớ lại/dò lỗi từ đầu.
 
 Cluster này **sống lâu dài, tách biệt hoàn toàn** với cluster AWS EKS —
-EKS dựng/xoá theo từng phiên lab (xem `terraform/02-aws-eks.md`), còn
-cluster này chỉ dựng 1 lần và giữ nguyên để chạy Rancher/ArgoCD quản lý.
-Sau khi cả 2 tầng đã lên, xem `k8s/03-connect-and-deploy.md` để nối chúng
-lại và deploy app.
+EKS dựng/xoá theo từng phiên lab (xem `terraform/03-aws-eks.md`), còn
+cluster local này chỉ dựng 1 lần và giữ nguyên để chạy **ArgoCD**.
 
-## 0. Tạo cluster Kubernetes local
+> **Rancher không còn cài ở đây nữa.** Rancher cần EKS "gọi ngược về" được
+> nó (agent phone-home) — 1 cluster chỉ sống trên máy bạn (đứng sau NAT,
+> không có IP public) không đáp ứng được việc đó ổn định. Rancher giờ
+> chạy trên 1 máy EC2 nhỏ, luôn bật — xem `terraform/02-rancher-host.md`.
+> ArgoCD thì khác: nó tự gọi ra API public của EKS, không cần EKS gọi
+> ngược lại, nên **vẫn chạy local bình thường** như dưới đây.
+
+Sau khi cả 2 tầng đã lên (cluster local này + Rancher host trên EC2 + EKS),
+xem `k8s/04-connect-and-deploy.md` để nối chúng lại và deploy app.
+
+## 0. Công cụ cần cài trước
+
+```powershell
+winget install Kubernetes.kubectl --accept-source-agreements --accept-package-agreements
+```
+
+(Docker Desktop cũng tự mang theo 1 bản `kubectl` khi cài — lệnh trên chỉ
+để chắc chắn có `kubectl` dù bạn dùng máy nào.) Mở lại terminal sau khi
+cài. Helm **không cần cài ở đây** — chỉ cần trên EC2 Rancher host
+(`terraform/02-rancher-host.md`), vì ArgoCD ở file này cài thẳng bằng
+`kubectl apply`, không qua Helm.
+
+## 1. Tạo cluster Kubernetes local
 
 Dùng Kubernetes tích hợp sẵn trong Docker Desktop (Settings → Kubernetes →
 Enable), chọn kiểu `kubeadm`, 1 node. Không cần cài thêm công cụ nào khác
@@ -25,95 +45,10 @@ kubectl get nodes               # hỏi cluster: node có đang Ready không
 
 Kỳ vọng: 1 node, `STATUS = Ready`.
 
-## 1. cert-manager — bắt buộc cài trước Rancher
+## 2. ArgoCD
 
-**Vì sao cần:** Rancher mặc định tự tạo chứng chỉ HTTPS cho chính nó bằng
-cách tạo ra 1 resource loại `Issuer` — nhưng `Issuer` không phải loại
-resource có sẵn trong Kubernetes, nó do `cert-manager` định nghĩa thêm vào
-(gọi là CRD — Custom Resource Definition). Không cài `cert-manager` trước
-thì Rancher cài sẽ lỗi ngay: `no matches for kind "Issuer"`.
-
-```powershell
-kubectl create namespace cert-manager
-
-helm repo add jetstack https://charts.jetstack.io
-helm repo update
-
-helm install cert-manager jetstack/cert-manager `
-  --namespace cert-manager `
-  -f k8s/helm-values/cert-manager.yaml
-```
-
-Đợi cả 3 phần đều lên khoẻ (lệnh dưới sẽ tự đứng chờ tới khi xong, không
-phải bị treo):
-
-```powershell
-kubectl -n cert-manager rollout status deploy/cert-manager
-kubectl -n cert-manager rollout status deploy/cert-manager-webhook
-kubectl -n cert-manager rollout status deploy/cert-manager-cainjector
-```
-
-Cả 3 dòng đều ra `successfully rolled out` mới sang bước 2.
-
-## 2. Rancher
-
-**Vì sao cần từng thông số trong `k8s/helm-values/rancher.yaml`:**
-
-| Thông số | Ý nghĩa |
-|---|---|
-| `hostname: rancher.local` | Tên miền Rancher dùng để tạo cert/URL nội bộ — chỉ mang tính hình thức vì bạn truy cập qua `port-forward`, không qua DNS thật |
-| `bootstrapPassword: admin` | Mật khẩu đăng nhập lần đầu — set cứng để khỏi phải đào `kubectl logs` tìm mật khẩu ngẫu nhiên. Chỉ chấp nhận được vì cluster này chạy local, không expose ra internet. Rancher bắt đổi mật khẩu thật ngay lần đăng nhập đầu |
-| `replicas: 1` | Chạy 1 bản sao Rancher — cluster chỉ có 1 node nên chạy nhiều bản không tăng độ tin cậy, chỉ tốn tài nguyên |
-
-```powershell
-kubectl create namespace cattle-system
-helm repo add rancher-latest https://releases.rancher.com/server-charts/latest
-helm repo update
-
-helm install rancher rancher-latest/rancher `
-  --namespace cattle-system `
-  -f k8s/helm-values/rancher.yaml
-```
-
-**Vì sao namespace tên `cattle-system`:** không phải mình tự đặt — đây là
-namespace bắt buộc theo tài liệu cài đặt chính thức của Rancher (tên
-"cattle" là di sản từ engine điều phối nội bộ đời Rancher 1.x, giữ lại làm
-quy ước đặt tên tới tận bây giờ).
-
-Đợi Rancher lên khoẻ:
-
-```powershell
-kubectl -n cattle-system rollout status deploy/rancher
-```
-
-## 3. Mở giao diện Rancher
-
-```powershell
-kubectl -n cattle-system port-forward svc/rancher 8443:443
-```
-
-Mở trình duyệt vào `https://localhost:8443`, đăng nhập bằng
-`bootstrapPassword` đã set ở bước 2 (`admin`), sau đó Rancher sẽ bắt đặt
-mật khẩu thật.
-
-`port-forward` = mở 1 đường ống tạm nối cổng `8443` trên máy bạn thẳng vào
-cổng `443` của Service `rancher` trong cluster — chỉ có tác dụng trong lúc
-lệnh này còn chạy (đóng terminal là mất kết nối, chạy lại lệnh là nối lại
-được ngay, không cần cài lại gì).
-
-## Lỗi hay gặp
-
-| Lỗi | Nguyên nhân | Cách sửa |
-|---|---|---|
-| `repo rancher-latest not found` | Chưa `helm repo add` trước khi `helm install` | Chạy `helm repo add` + `helm repo update` trước |
-| `no matches for kind "Issuer"` | Cài Rancher trước khi cài `cert-manager` | Cài `cert-manager` (mục 1) trước, rồi mới cài Rancher |
-| `metadata.annotations: Too long: may not be more than 262144 bytes` | CRD của ArgoCD quá lớn, không nhét vừa vào annotation `last-applied-configuration` của `kubectl apply` thường | Thêm `--server-side` vào lệnh apply |
-| `Apply failed with 1 conflict: conflict with "kubectl-client-side-apply"` | Đã lỡ `apply` không có `--server-side` trước đó, giờ đổi cách apply bị vướng "chủ sở hữu" cũ | Thêm `--force-conflicts` vào lệnh apply |
-
-## 4. ArgoCD
-
-**Vì sao tải file `install.yaml` về repo (`k8s/manifests/argocd-install.yaml`)
-thay vì `kubectl apply -f <url>` thẳng:**
+**Vì sao tải file `install.yaml` về repo (`k8s/argocd-install.yaml`) thay
+vì `kubectl apply -f <url>` thẳng:**
 
 1. URL kiểu `.../stable/manifests/install.yaml` trỏ vào nhánh `stable` —
    nội dung đổi theo thời gian mỗi khi ArgoCD ra bản mới. Cài hôm nay và
@@ -123,19 +58,27 @@ thay vì `kubectl apply -f <url>` thẳng:**
 2. Đúng tinh thần GitOps đang theo đuổi: trạng thái hạ tầng nằm trong Git,
    không rải rác trong lệnh gõ tay/URL ngoài.
 
+> **Đặt file này ở `k8s/argocd-install.yaml` — ngoài `k8s/manifests/`,
+> không phải bên trong.** `k8s/manifests/` là thư mục Application
+> `chat-app` (mục 2.4 ở `k8s/04-connect-and-deploy.md`) tự động theo dõi
+> và sync toàn bộ nội dung lên EKS — nếu để file cài đặt ArgoCD lẫn vào
+> đó, ArgoCD sẽ cố cài lại **chính nó** vào cluster EKS, gây lỗi CRD quá
+> lớn (`262144 bytes`) y hệt lỗi đã gặp lúc cài ArgoCD lần đầu.
+
 ```powershell
-mkdir k8s\manifests -Force
-Invoke-WebRequest -Uri "https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.1/manifests/install.yaml" -OutFile "k8s\manifests\argocd-install.yaml"
+Invoke-WebRequest -Uri "https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.1/manifests/install.yaml" -OutFile "k8s\argocd-install.yaml"
 
 kubectl create namespace argocd
-kubectl apply -n argocd -f k8s/manifests/argocd-install.yaml --server-side 
+kubectl apply -n argocd -f k8s/argocd-install.yaml --server-side --force-conflicts
 ```
 
-`--force-conflicts` phòng trường hợp bạn từng chạy `kubectl apply` (không có
-`--server-side`) trước đó rồi mới đổi sang `--server-side` — lúc đó các
-resource đã có "chủ sở hữu" kiểu cũ (`kubectl-client-side-apply`), server-side
-apply mặc định không tự giành quyền quản lý field của người khác, cần xác
-nhận rõ ràng bằng flag này.
+`--server-side` cần thiết vì CRD của ArgoCD quá lớn, vượt giới hạn 256KB
+của annotation mà `kubectl apply` thường dùng. `--force-conflicts` phòng
+trường hợp bạn từng chạy `kubectl apply` (không có `--server-side`) trước
+đó rồi mới đổi sang `--server-side` — lúc đó các resource đã có "chủ sở
+hữu" kiểu cũ (`kubectl-client-side-apply`), server-side apply mặc định
+không tự giành quyền quản lý field của người khác, cần xác nhận rõ ràng
+bằng flag này.
 
 Đợi server chính lên khoẻ:
 
@@ -143,15 +86,15 @@ nhận rõ ràng bằng flag này.
 kubectl -n argocd rollout status deploy/argocd-server
 ```
 
-Mở UI (đường ống riêng, cổng khác Rancher để chạy song song được):
+Mở UI:
 
 ```powershell
 kubectl -n argocd port-forward svc/argocd-server 8080:443
 ```
 
-Vào `https://localhost:8080` (cũng sẽ bị cảnh báo chứng chỉ tự ký giống
-Rancher — bỏ qua như đã làm ở bước Rancher). Đăng nhập bằng user `admin`,
-lấy mật khẩu khởi tạo (ArgoCD tự sinh, không đặt cứng như Rancher):
+Vào `https://localhost:8080` (sẽ bị cảnh báo chứng chỉ tự ký — bỏ qua,
+bình thường vì đây là cluster chạy local). Đăng nhập bằng user `admin`,
+lấy mật khẩu khởi tạo (ArgoCD tự sinh):
 
 ```powershell
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
@@ -159,10 +102,18 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.pas
 
 Lệnh này lấy giá trị `password` từ 1 Kubernetes Secret (dữ liệu nhạy cảm
 K8s lưu ở dạng mã hoá base64, không phải văn bản thường), rồi giải mã
-base64 ra để đọc được.
+base64 ra để đọc được. Windows PowerShell không có sẵn lệnh `base64` như
+Linux/macOS, nên dùng hàm .NET (`System.Convert`) thay thế.
 
 ## Nâng cấp version ArgoCD sau này
 
 Đổi số version trong URL ở bước tải file, tải đè lên
-`k8s/manifests/argocd-install.yaml`, rồi `kubectl apply` lại — `git diff`
+`k8s/argocd-install.yaml`, rồi `kubectl apply` lại — `git diff`
 sẽ cho thấy chính xác thứ gì thay đổi giữa 2 bản trước khi bạn áp dụng.
+
+## Lỗi hay gặp
+
+| Lỗi | Nguyên nhân | Cách sửa |
+|---|---|---|
+| `metadata.annotations: Too long: may not be more than 262144 bytes` | CRD của ArgoCD quá lớn, không nhét vừa vào annotation `last-applied-configuration` của `kubectl apply` thường | Thêm `--server-side` vào lệnh apply |
+| `Apply failed with 1 conflict: conflict with "kubectl-client-side-apply"` | Đã lỡ `apply` không có `--server-side` trước đó, giờ đổi cách apply bị vướng "chủ sở hữu" cũ | Thêm `--force-conflicts` vào lệnh apply |

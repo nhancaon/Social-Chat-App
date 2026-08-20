@@ -3,7 +3,7 @@
 Khác với `k8s/01-local-management.md` (dựng 1 lần, giữ mãi) — cluster EKS ở
 đây **dựng lên rồi xoá theo từng phiên lab** (~3 ngày) để tối ưu chi phí.
 Rancher/ArgoCD ở tầng local sẽ **import/đăng ký** cluster này vào quản lý
-sau khi nó đã chạy (xem `k8s/03-connect-and-deploy.md`).
+sau khi nó đã chạy (xem `k8s/04-connect-and-deploy.md`).
 
 ## 0. Chuẩn bị tài khoản AWS & công cụ local (1 lần duy nhất)
 
@@ -18,7 +18,7 @@ Mở lại terminal, kiểm tra:
 
 ```powershell
 aws --version
-terraform -version
+terraform --version
 ```
 
 ### Chuẩn bị trên AWS Console (làm tay)
@@ -74,7 +74,7 @@ Chạy đúng lệnh in ra ở output `configure_kubectl`, rồi kiểm tra:
 kubectl get nodes
 ```
 
-Từ đây, sang `k8s/03-connect-and-deploy.md` để import vào Rancher, đăng ký
+Từ đây, sang `k8s/04-connect-and-deploy.md` để import vào Rancher, đăng ký
 ArgoCD, deploy Kafka/Redis/backend.
 
 ## 3. Mỗi phiên lab — dọn dẹp

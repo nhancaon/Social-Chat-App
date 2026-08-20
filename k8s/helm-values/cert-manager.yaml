@@ -1,3 +1,0 @@
-# helm install cert-manager jetstack/cert-manager --namespace cert-manager -f k8s/helm-values/cert-manager.yaml
-crds:
-  enabled: true

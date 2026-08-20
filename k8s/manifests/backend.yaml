@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: chat-app
+spec:
+  replicas: 2
+  selector: { matchLabels: { app: backend } }
+  template:
+    metadata: { labels: { app: backend } }
+    spec:
+      containers:
+        - name: backend
+          image: nhancaon/go-appchat-api:latest
+          args: ["--kafka=kafka.chat-app.svc.cluster.local:9092"]
+          ports: [{ containerPort: 5000 }]
+          env:
+            - { name: PORT, value: "5000" }
+            - name: MONGODB_URI
+              valueFrom: { secretKeyRef: { name: backend-secrets, key: mongodb-uri } }
+            - { name: REDIS_ADDR, value: "redis.chat-app.svc.cluster.local:6379" }
+            - { name: REDIS_TLS, value: "false" }
+            - name: JWT_SECRET
+              valueFrom: { secretKeyRef: { name: backend-secrets, key: jwt-secret } }
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: chat-app
+spec:
+  type: LoadBalancer # public NLB — frontend Vercel gọi vào đây, không phải ClusterIP
+  selector: { app: backend }
+  ports: [{ port: 80, targetPort: 5000 }]
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend-hpa
+  namespace: chat-app
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: backend }
+  minReplicas: 2
+  maxReplicas: 6
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }

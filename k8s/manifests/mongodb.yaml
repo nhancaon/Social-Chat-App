@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongodb
+  namespace: chat-app
+spec:
+  replicas: 1
+  selector: { matchLabels: { app: mongodb } }
+  template:
+    metadata: { labels: { app: mongodb } }
+    spec:
+      containers:
+        - name: mongodb
+          image: mongo:8.0
+          ports: [{ containerPort: 27017 }]
+          envFrom:
+            - secretRef: { name: mongodb-secrets }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongodb
+  namespace: chat-app
+spec:
+  selector: { app: mongodb }
+  ports: [{ port: 27017, targetPort: 27017 }]
