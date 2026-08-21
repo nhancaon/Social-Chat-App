@@ -320,11 +320,123 @@ API cho frontend: `POST /files/upload-url` → `POST /files/:id/confirm` →
 `GET /files/:id/download-url`, `POST /files/:id/restore` (nếu file đã
 Glacier), `DELETE /files/:id` (soft-delete/trash).
 
-Muốn demo archival ngay không đợi 90 ngày thật: sửa
-`ARCHIVE_AFTER_HOURS` trong `file-jobs.yaml` xuống nhỏ (VD `1`), hoặc
-chạy tay một lần:
+Muốn demo archival ngay không đợi 90 ngày thật — **lưu ý**: sửa
+`ARCHIVE_AFTER_HOURS` bằng `kubectl set env` (không commit lên Git) sẽ
+bị ArgoCD tự revert lại gần như ngay lập tức, vì `chat-app` đang chạy
+`Automated` + `selfHeal` (ArgoCD watch trực tiếp API, không phải đợi
+poll 3 phút). Cách không bị giành lại: backdate `lastAccessedAt` của
+đúng file demo trong Mongo, để nó tự đủ điều kiện theo chính sách thật
+90 ngày — không đụng gì tới config nên không có gì để ArgoCD revert.
+
+**Bước 1 — lấy `_id` của file muốn demo:**
+
+```powershell
+$mongoUriB64 = kubectl get secret backend-secrets -n chat-app -o jsonpath='{.data.mongodb-uri}'
+$mongoUri = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($mongoUriB64))
+
+kubectl run mongo-shell --rm -i --restart=Never --image=mongo:7 -n chat-app -- `
+  mongosh $mongoUri --quiet --eval `
+  'db.getSiblingDB("social-chat").files.find({uploaded:true, isDeleted:false}, {filename:1, storageClass:1, lastAccessedAt:1}).toArray()'
+```
+
+Copy đúng `_id` của file cần demo (dạng `ObjectId('...')`, chỉ lấy phần
+chuỗi hex bên trong).
+
+**Bước 2 — backdate `lastAccessedAt` về 100 ngày trước:**
+
+```powershell
+$fileId = "<dán _id vừa copy, không kèm chữ ObjectId>"
+
+kubectl run mongo-shell2 --rm -i --restart=Never --image=mongo:7 -n chat-app -- `
+  mongosh $mongoUri --quiet --eval `
+  "db.getSiblingDB('social-chat').files.updateOne({_id: ObjectId('$fileId')}, {`$set: {lastAccessedAt: new Date(Date.now() - 100*24*60*60*1000)}})"
+```
+
+**Bước 3 — chạy job archive tay:**
 
 ```powershell
 kubectl create job --from=cronjob/file-archive-scan file-archive-scan-manual -n chat-app
 kubectl logs -n chat-app job/file-archive-scan-manual -f
 ```
+
+Kỳ vọng thấy `archive-scan: done — 1 archived, 0 failed, 1 eligible`.
+Verify thật trên S3 (không chỉ tin ở log):
+
+```powershell
+aws s3api head-object --bucket <bucket-name> --key "uploads/<userId>/<fileId>-<filename>" --query "StorageClass" --output text
+```
+phải ra `GLACIER`.
+
+Riêng biến `RESTORE_TIER=Expedited` (đẩy nhanh restore ~1-5 phút cho
+demo, thay vì vài giờ) nằm trên **Deployment `backend`** đang chạy
+24/7 — không có cách né như trên, nếu cần chỉnh phải tạm khoá auto-sync
+trước:
+
+```powershell
+argocd app set chat-app --sync-policy none
+kubectl set env deployment/backend -n chat-app RESTORE_TIER=Expedited
+kubectl rollout status deployment backend -n chat-app
+```
+
+**Nhớ bật lại auto-sync ngay sau khi quay/test xong** — đây là bước dễ
+quên nhất, quên thì mọi thay đổi tay sau đó không còn được ArgoCD tự
+sync/self-heal bảo vệ nữa:
+
+```powershell
+argocd app set chat-app --sync-policy automated --self-heal --auto-prune
+```
+
+## 4. Dọn dẹp / Teardown — xoá sạch hạ tầng AWS
+
+Xong lab/demo và muốn ngừng tính phí — xoá theo **đúng thứ tự** này,
+sai thứ tự dễ để sót resource "mồ côi" (không bị Terraform quản lý
+nữa nhưng vẫn âm thầm tính tiền), hoặc khiến `terraform destroy` báo
+lỗi giữa chừng.
+
+**Bước 1 — xoá Service LoadBalancer trước.** Đây là ELB do EKS in-tree
+cloud provider tự tạo khi thấy `type: LoadBalancer` trong
+`backend.yaml` — Terraform không hề biết tới nó (được tạo ra bởi
+Kubernetes, không phải bởi `terraform apply`), nên `terraform destroy`
+**không tự xoá** — nếu bỏ qua bước này, ELB sẽ nằm lại vĩnh viễn, tính
+phí đều đều mà không nằm trong bất kỳ state Terraform nào để dọn sau.
+
+```powershell
+kubectl config use-context eks-lab
+kubectl delete svc backend -n chat-app
+```
+
+**Bước 2 — xoá sạch object trong S3 bucket.** Bucket S3 do Terraform
+tạo (`terraform/s3.tf`) không bật `force_destroy`, nên nếu còn file
+bên trong, `terraform destroy` sẽ dừng lại báo lỗi "bucket not empty"
+giữa chừng.
+
+```powershell
+aws s3 rm s3://<bucket-name> --recursive
+```
+
+**Bước 3 — destroy phần chính** (EKS, VPC, NAT Gateway, S3 bucket, IAM
+user cho file storage):
+
+```powershell
+cd terraform
+terraform destroy
+```
+
+**Bước 4 — destroy Rancher host** (EC2 riêng, module Terraform độc
+lập, không phụ thuộc vào bước 3 nên có thể chạy song song):
+
+```powershell
+cd terraform/rancher-host
+terraform destroy
+```
+
+**Không cần đụng tới** khi teardown (không tính phí AWS hoặc thuộc
+dịch vụ/billing khác, không liên quan tới uptime cluster):
+- ArgoCD + cluster local Docker Desktop — chạy trên máy bạn, không tốn phí AWS
+- Domain `ncnhan.uk` (Cloudflare Registrar) — tính phí theo năm, không liên quan uptime
+- Frontend trên Vercel — free tier, không tính theo uptime backend
+
+Sau khi cả 2 lệnh `terraform destroy` chạy xong, kiểm tra lại
+[AWS Billing Console](https://us-east-1.console.aws.amazon.com/costmanagement/home)
+hoặc chạy `aws eks list-clusters` / `aws ec2 describe-instances` để
+chắc chắn không còn resource nào sót lại.
