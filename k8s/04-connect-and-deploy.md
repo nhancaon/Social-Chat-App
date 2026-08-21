@@ -204,10 +204,24 @@ chạy ở EKS.
 
 ### 3.1 — Tạo Secret trước (làm tay, không đưa vào Git)
 
-Backend cần `MONGODB_URI` (có mật khẩu) và `JWT_SECRET` — đây là bí mật
-thật, **không đặt trong file YAML commit lên Git** (đúng lý do đã giải
-thích với `bootstrapPassword` của Rancher). Chạy trên máy Windows, context
-trỏ vào `eks-lab`:
+Backend cần `MONGODB_URI` (có mật khẩu), `JWT_SECRET`, và (từ khi thêm
+tính năng file storage) bộ credential S3 — đây đều là bí mật thật,
+**không đặt trong file YAML commit lên Git** (đúng lý do đã giải thích
+với `bootstrapPassword` của Rancher). `terraform/s3.tf` nằm chung root
+module với EKS/VPC nên chỉ cần chạy lại đúng lệnh `terraform apply` ban
+đầu (không phải lệnh mới) là bucket S3 + IAM user sẽ được tạo thêm cùng
+lúc. Lấy giá trị ra bằng `terraform output`:
+
+```powershell
+cd terraform
+terraform apply   # lệnh cũ — chạy lại để tạo thêm bucket S3 + IAM user
+$bucketName = terraform output -raw files_bucket_name
+$awsKeyId   = terraform output -raw backend_s3_access_key_id
+$awsSecret  = terraform output -raw backend_s3_secret_access_key
+cd ..
+```
+
+Rồi tạo Secret. Chạy trên máy Windows, context trỏ vào `eks-lab`:
 
 ```powershell
 kubectl config use-context eks-lab
@@ -222,17 +236,46 @@ kubectl create secret generic mongodb-secrets -n chat-app `
 
 kubectl create secret generic backend-secrets -n chat-app `
   --from-literal=jwt-secret=$jwtSecret `
-  --from-literal=mongodb-uri="mongodb://admin:$mongoPass@mongodb.chat-app.svc.cluster.local:27017"
+  --from-literal=mongodb-uri="mongodb://admin:$mongoPass@mongodb.chat-app.svc.cluster.local:27017" `
+  --from-literal=aws-s3-bucket=$bucketName `
+  --from-literal=aws-access-key-id=$awsKeyId `
+  --from-literal=aws-secret-access-key=$awsSecret
 ```
 
 Namespace `chat-app` tạo tay trước ở đây luôn (dù `CreateNamespace=true`
 đã khai báo ở Application) — vì Secret cần namespace **đã tồn tại** để
 tạo vào, mà thời điểm này ArgoCD chưa chắc đã sync lần nào.
 
+> **Nếu `backend-secrets` đã tồn tại sẵn từ trước** (đã deploy
+> MongoDB/backend trong lần lab trước rồi) — **đừng** chạy lại
+> `kubectl create secret` ở trên, nó sẽ báo lỗi "already exists". Chỉ cần
+> **thêm** 3 key AWS mới vào Secret sẵn có, giữ nguyên `jwt-secret`/
+> `mongodb-uri` cũ (đổi `jwt-secret` sẽ làm mọi user đang login bị logout
+> hết):
+>
+> ```powershell
+> $patch = @{ stringData = @{
+>     "aws-s3-bucket"          = $bucketName
+>     "aws-access-key-id"      = $awsKeyId
+>     "aws-secret-access-key"  = $awsSecret
+> } } | ConvertTo-Json -Compress
+>
+> # ghi ra file tạm rồi dùng --patch-file, KHÔNG dùng -p trực tiếp —
+> # PowerShell gọi kubectl.exe (chương trình ngoài) thường làm hỏng dấu
+> # ngoặc kép trong chuỗi JSON truyền qua tham số dòng lệnh
+> $patchFile = New-TemporaryFile
+> Set-Content -Path $patchFile -Value $patch -Encoding utf8 -NoNewline
+> kubectl patch secret backend-secrets -n chat-app --type merge --patch-file $patchFile
+> Remove-Item $patchFile
+> ```
+>
+> `stringData` là trường ghi bằng plain text — Kubernetes tự base64-encode
+> và gộp vào `data`, không cần tự mã hoá tay.
+
 ### 3.2 — Đẩy manifest lên Git, để ArgoCD tự sync
 
 ```powershell
-git add k8s/manifests/mongodb.yaml k8s/manifests/redis.yaml k8s/manifests/kafka.yaml k8s/manifests/kafka-ui.yaml k8s/manifests/backend.yaml
+git add k8s/manifests/mongodb.yaml k8s/manifests/redis.yaml k8s/manifests/kafka.yaml k8s/manifests/kafka-ui.yaml k8s/manifests/backend.yaml k8s/manifests/file-jobs.yaml
 git commit -m "add app manifests for ArgoCD"
 git push
 ```
@@ -260,3 +303,28 @@ chỉ đó làm `VUE_APP_API_URL` khi build frontend trên Vercel.
 > (~$0.0225/giờ + data) — nhớ `kubectl delete svc backend -n chat-app`
 > trước khi `terraform destroy` phần EKS, không thì NLB có thể bị "mồ
 > côi", không tự xoá theo cluster.
+
+### 3.4 — Tính năng file storage (S3 + Glacier archival)
+
+`k8s/manifests/file-jobs.yaml` khai báo 3 `CronJob`, dùng chung image
+backend với `-job=<tên>` thay vì chạy HTTP server:
+
+| CronJob | Lịch | Việc làm |
+|---|---|---|
+| `file-archive-scan` | 03:00 hằng ngày | file STANDARD không đụng tới quá `ARCHIVE_AFTER_HOURS` → chuyển Glacier |
+| `file-trash-purge` | 03:30 hằng ngày | file trong trash quá `TRASH_RETENTION_HOURS` → xoá thật, hoàn quota |
+| `file-restore-poll` | mỗi 5 phút | check file đang `RESTORING` đã xong chưa, xong thì báo qua Kafka `notifications` (dùng lại đúng đường dẫn WebSocket của chat/notification) |
+
+API cho frontend: `POST /files/upload-url` → `POST /files/:id/confirm` →
+(client upload thẳng S3, backend không proxy byte nào) → `GET /files`,
+`GET /files/:id/download-url`, `POST /files/:id/restore` (nếu file đã
+Glacier), `DELETE /files/:id` (soft-delete/trash).
+
+Muốn demo archival ngay không đợi 90 ngày thật: sửa
+`ARCHIVE_AFTER_HOURS` trong `file-jobs.yaml` xuống nhỏ (VD `1`), hoặc
+chạy tay một lần:
+
+```powershell
+kubectl create job --from=cronjob/file-archive-scan file-archive-scan-manual -n chat-app
+kubectl logs -n chat-app job/file-archive-scan-manual -f
+```

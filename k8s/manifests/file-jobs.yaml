@@ -1,0 +1,100 @@
+# Three one-shot jobs reusing the same backend image with `-job=<name>`.
+# All read the same backend-secrets K8s Secret for Mongo + AWS creds — see
+# k8s/04-connect-and-deploy.md for how to add the aws-* keys to it.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: file-archive-scan
+  namespace: chat-app
+spec:
+  # daily 03:00 — reclassifies files idle past ARCHIVE_AFTER_HOURS to Glacier.
+  # Lower ARCHIVE_AFTER_HOURS (or trigger a manual Job from this CronJob) to demo live.
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: archive-scan
+              image: nhancaon/go-appchat-api:latest
+              command: ["./main"]
+              args: ["-job=archive-scan"]
+              env:
+                - name: MONGODB_URI
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: mongodb-uri } }
+                - { name: AWS_REGION, value: "ap-southeast-1" }
+                - name: AWS_S3_BUCKET
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-s3-bucket } }
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-access-key-id } }
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-secret-access-key } }
+                - { name: ARCHIVE_AFTER_HOURS, value: "2160" } # 90 days, mirrors terraform/s3.tf's lifecycle rule
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: file-trash-purge
+  namespace: chat-app
+spec:
+  # daily 03:30 — permanently deletes trash older than TRASH_RETENTION_HOURS
+  schedule: "30 3 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: trash-purge
+              image: nhancaon/go-appchat-api:latest
+              command: ["./main"]
+              args: ["-job=trash-purge"]
+              env:
+                - name: MONGODB_URI
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: mongodb-uri } }
+                - { name: AWS_REGION, value: "ap-southeast-1" }
+                - name: AWS_S3_BUCKET
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-s3-bucket } }
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-access-key-id } }
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-secret-access-key } }
+                - { name: TRASH_RETENTION_HOURS, value: "720" } # 30 days
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: file-restore-poll
+  namespace: chat-app
+spec:
+  # every 5 min — S3 doesn't push "Glacier restore finished", so this polls it.
+  # Completion triggers a realtime notification via the existing Kafka fan-out.
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: restore-poll
+              image: nhancaon/go-appchat-api:latest
+              command: ["./main"]
+              args: ["-job=restore-poll"]
+              env:
+                - name: MONGODB_URI
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: mongodb-uri } }
+                - { name: AWS_REGION, value: "ap-southeast-1" }
+                - name: AWS_S3_BUCKET
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-s3-bucket } }
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-access-key-id } }
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-secret-access-key } }
+                - { name: KAFKA_ADDR, value: "kafka.chat-app.svc.cluster.local:9092" }

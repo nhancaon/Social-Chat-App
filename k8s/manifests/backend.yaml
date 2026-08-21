@@ -23,6 +23,13 @@ spec:
             - { name: REDIS_TLS, value: "false" }
             - name: JWT_SECRET
               valueFrom: { secretKeyRef: { name: backend-secrets, key: jwt-secret } }
+            - { name: AWS_REGION, value: "ap-southeast-1" }
+            - name: AWS_S3_BUCKET
+              valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-s3-bucket } }
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-access-key-id } }
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-secret-access-key } }
           resources:
             requests: { cpu: 100m, memory: 128Mi }
             limits: { cpu: 500m, memory: 256Mi }
