@@ -74,6 +74,7 @@ variable "file_upload_cors_origins" {
     "http://localhost:8080",
     "https://ncnhan.uk",
     "https://www.ncnhan.uk",
+    "https://social-chat-app-seven.vercel.app", # Vercel's own domain — still in use alongside the custom domain
   ]
 }
 
