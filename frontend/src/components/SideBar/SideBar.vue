@@ -7,6 +7,13 @@
       <q-item-section>Profile</q-item-section>
     </q-item>
 
+    <q-item v-if="currentUser" to="/MyFiles" clickable v-ripple>
+      <q-item-section avatar>
+        <q-icon color="primary" name="eva-folder-outline" />
+      </q-item-section>
+      <q-item-section>My Files</q-item-section>
+    </q-item>
+
     <q-item v-else to="/Auth" clickable v-ripple>
       <q-item-section avatar>
         <q-icon color="primary" name="eva-person-outline" />

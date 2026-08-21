@@ -8,6 +8,7 @@ import PostDetail from '../components/Post/PostDetail.vue'
 import Search from '../components/Search/Search.vue'
 import Notification from '../components/Notification/Notification.vue'
 import Chat from '../components/Chat/Chat.vue'
+import MyFiles from '@/views/MyFiles.vue'
 
 const routes = [
   { path: '/', name: 'home', component: HomeView, meta: { requiresAuth: true } },
@@ -35,6 +36,12 @@ const routes = [
     path: '/Chat',
     name: 'chat',
     component: Chat,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/MyFiles',
+    name: 'MyFiles',
+    component: MyFiles,
     meta: { requiresAuth: true },
   },
 ]

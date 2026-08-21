@@ -42,3 +42,13 @@ export const sendMessage = (msg) => API.post('chat/sendmessage', msg);
 export const getUnreadMessageCount = (id) => API.get(`chat/get-user-unreadmsg?userid=${id}`)
 export const getMessagesByPage = (from, firstuid, seconduid) => API.get(`chat/getmsgsbynums?from=${from}&firstuid=${firstuid}&seconduid=${seconduid}`)
 export const markMessageAsRead = (mainuid, otheruid) => API.get(`chat/mark-msg-asreaded?mainuid=${mainuid}&otheruid=${otheruid}`)
+
+// files — note the actual S3 upload (PUT to uploadUrl) does NOT go through this
+// API instance: it must skip both the JWT header and the API baseURL, so it's
+// done with a bare axios call in the component instead.
+export const listFiles = () => API.get('files');
+export const requestUploadUrl = (fileMeta) => API.post('files/upload-url', fileMeta);
+export const confirmUpload = (fileId) => API.post(`files/${fileId}/confirm`);
+export const getDownloadUrl = (fileId) => API.get(`files/${fileId}/download-url`);
+export const restoreFile = (fileId) => API.post(`files/${fileId}/restore`);
+export const deleteFile = (fileId) => API.delete(`files/${fileId}`);
