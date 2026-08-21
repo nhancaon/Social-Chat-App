@@ -82,6 +82,16 @@ func DeleteObject(ctx context.Context, key string) error {
 	return err
 }
 
+// restoreTier defaults to Standard (~3-5h, cheapest) for production. Overridable
+// via env so a demo/recording can request Expedited (~1-5min) without a code
+// change — Expedited costs more per GB, so it's opt-in, not the default.
+func restoreTier() s3types.Tier {
+	if os.Getenv("RESTORE_TIER") == "Expedited" {
+		return s3types.TierExpedited
+	}
+	return s3types.TierStandard
+}
+
 // RequestRestore kicks off an async Glacier rehydration; forDays controls how
 // long the restored copy stays available before S3 lets it lapse back to GLACIER.
 func RequestRestore(ctx context.Context, key string, forDays int32) error {
@@ -91,7 +101,7 @@ func RequestRestore(ctx context.Context, key string, forDays int32) error {
 		RestoreRequest: &s3types.RestoreRequest{
 			Days: awssdk.Int32(forDays),
 			GlacierJobParameters: &s3types.GlacierJobParameters{
-				Tier: s3types.TierStandard,
+				Tier: restoreTier(),
 			},
 		},
 	})
