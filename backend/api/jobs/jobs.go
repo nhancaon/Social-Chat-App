@@ -17,7 +17,9 @@ func Run(ctx context.Context, name string) error {
 		return TrashPurge(ctx)
 	case "restore-poll":
 		return RestorePoll(ctx)
+	case "abandoned-upload-purge":
+		return AbandonedUploadPurge(ctx)
 	default:
-		return fmt.Errorf("unknown job %q (want archive-scan | trash-purge | restore-poll)", name)
+		return fmt.Errorf("unknown job %q (want archive-scan | trash-purge | restore-poll | abandoned-upload-purge)", name)
 	}
 }
