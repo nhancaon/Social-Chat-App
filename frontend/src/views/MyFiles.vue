@@ -8,7 +8,7 @@
     <q-card flat bordered class="q-pa-md q-mb-md">
       <div class="row items-center q-mb-xs">
         <div class="text-caption text-grey-7">
-          Đã dùng {{ formatBytes(storageUsedBytes) }} / {{ formatBytes(storageQuotaBytes) }}
+          Used {{ formatBytes(storageUsedBytes) }} / {{ formatBytes(storageQuotaBytes) }}
         </div>
         <q-space />
         <q-btn flat dense round icon="eva-refresh-outline" :loading="isLoading" @click="refreshAll" />
@@ -25,7 +25,7 @@
         <q-item-section>
           <q-item-label>{{ file.filename }}</q-item-label>
           <q-item-label caption>
-            {{ formatBytes(file.sizeBytes) }} · tải lên {{ formatDate(file.uploadedAt) }}
+            {{ formatBytes(file.sizeBytes) }} · uploaded {{ formatDate(file.uploadedAt) }}
           </q-item-label>
         </q-item-section>
 
@@ -39,14 +39,14 @@
           <div class="row q-gutter-xs">
             <q-btn v-if="canDownload(file)" flat dense round icon="eva-download-outline" color="primary"
               :loading="downloadingId === file._id" @click="handleDownload(file)">
-              <q-tooltip>Tải xuống</q-tooltip>
+              <q-tooltip>Download</q-tooltip>
             </q-btn>
             <q-btn v-else-if="file.storageClass === 'GLACIER'" flat dense round icon="eva-flip-2-outline"
               color="blue-grey" :loading="restoringId === file._id" @click="handleRestore(file)">
-              <q-tooltip>Phục hồi từ kho lạnh</q-tooltip>
+              <q-tooltip>Restore from cold storage</q-tooltip>
             </q-btn>
             <q-btn flat dense round icon="eva-trash-2-outline" color="negative" @click="confirmDeleteFile(file)">
-              <q-tooltip>Chuyển vào thùng rác</q-tooltip>
+              <q-tooltip>Move to trash</q-tooltip>
             </q-btn>
           </div>
         </q-item-section>
@@ -54,7 +54,7 @@
     </q-list>
 
     <div v-else-if="!isLoading" class="text-grey text-center q-pa-xl">
-      Chưa có file nào — bấm "Upload file" để bắt đầu
+      No files yet — click "Upload file" to get started
     </div>
 
     <div v-else class="q-pa-xl text-center">
@@ -69,7 +69,7 @@
         </q-card-section>
 
         <q-card-section class="q-pt-none">
-          <q-file v-model="pickedFile" label="Chọn file" filled :disable="isUploading">
+          <q-file v-model="pickedFile" label="Choose file" filled :disable="isUploading">
             <template v-slot:prepend>
               <q-icon name="eva-attach-outline" />
             </template>
@@ -82,8 +82,8 @@
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat label="Huỷ" v-close-popup :disable="isUploading" @click="resetUpload" />
-          <q-btn unelevated color="primary" label="Tải lên" :loading="isUploading" :disable="!pickedFile"
+          <q-btn flat label="Cancel" v-close-popup :disable="isUploading" @click="resetUpload" />
+          <q-btn unelevated color="primary" label="Upload" :loading="isUploading" :disable="!pickedFile"
             @click="handleUpload" />
         </q-card-actions>
       </q-card>
@@ -93,14 +93,14 @@
     <q-dialog v-model="deleteDialog">
       <q-card style="min-width: 320px;">
         <q-card-section>
-          <div class="text-h6">Chuyển vào thùng rác?</div>
+          <div class="text-h6">Move to trash?</div>
         </q-card-section>
         <q-card-section class="q-pt-none">
-          "{{ fileToDelete?.filename }}" sẽ nằm trong thùng rác 30 ngày trước khi bị xoá vĩnh viễn.
+          "{{ fileToDelete?.filename }}" will stay in trash for 30 days before being permanently deleted.
         </q-card-section>
         <q-card-actions align="right">
-          <q-btn flat label="Huỷ" v-close-popup />
-          <q-btn unelevated color="negative" label="Chuyển vào thùng rác" @click="handleDeleteConfirmed" />
+          <q-btn flat label="Cancel" v-close-popup />
+          <q-btn unelevated color="negative" label="Move to trash" @click="handleDeleteConfirmed" />
         </q-card-actions>
       </q-card>
     </q-dialog>
@@ -113,10 +113,10 @@ import { mapGetters, mapActions } from 'vuex'
 
 // tiers mirror backend/api/models/file_model.go's StorageClass constants
 const TIER_META = {
-  STANDARD: { label: 'Sẵn sàng', color: 'primary', icon: 'eva-file-outline' },
-  GLACIER: { label: 'Kho lạnh', color: 'blue-grey', icon: 'eva-cube-outline' },
-  RESTORING: { label: 'Đang phục hồi...', color: 'orange', icon: 'eva-loader-outline' },
-  RESTORED: { label: 'Đã phục hồi', color: 'teal', icon: 'eva-checkmark-circle-outline' },
+  STANDARD: { label: 'Ready', color: 'primary', icon: 'eva-file-outline' },
+  GLACIER: { label: 'Cold storage', color: 'blue-grey', icon: 'eva-cube-outline' },
+  RESTORING: { label: 'Restoring...', color: 'orange', icon: 'eva-loader-outline' },
+  RESTORED: { label: 'Restored', color: 'teal', icon: 'eva-checkmark-circle-outline' },
 }
 
 export default {
@@ -175,7 +175,7 @@ export default {
 
     formatDate(dateStr) {
       if (!dateStr) return ''
-      return new Date(dateStr).toLocaleDateString('vi-VN')
+      return new Date(dateStr).toLocaleDateString('en-US')
     },
 
     openUploadDialog() {
@@ -211,12 +211,12 @@ export default {
 
         await this.confirmUpload(fileRecord._id)
 
-        this.$q.notify({ icon: 'eva-alert-circle-outline', type: 'positive', message: 'Tải file lên thành công' })
+        this.$q.notify({ icon: 'eva-alert-circle-outline', type: 'positive', message: 'File uploaded successfully' })
         this.uploadDialog = false
         this.resetUpload()
       } catch (error) {
         console.error('handleUpload error:', error)
-        this.$q.notify({ icon: 'eva-alert-circle-outline', type: 'negative', message: 'Tải file lên thất bại, thử lại sau' })
+        this.$q.notify({ icon: 'eva-alert-circle-outline', type: 'negative', message: 'Upload failed, please try again' })
       } finally {
         this.isUploading = false
       }
@@ -230,8 +230,8 @@ export default {
       } catch (error) {
         const status = error?.response?.status
         const message = status === 409
-          ? 'File đang ở kho lạnh — bấm "Phục hồi" trước khi tải'
-          : 'Không tải được file, thử lại sau'
+          ? 'File is in cold storage — click "Restore" before downloading'
+          : 'Failed to download file, please try again'
         this.$q.notify({ icon: 'eva-alert-circle-outline', type: 'negative', message })
       } finally {
         this.downloadingId = null
@@ -245,11 +245,11 @@ export default {
         this.$q.notify({
           icon: 'eva-alert-circle-outline',
           type: 'info',
-          message: data.message || 'Đã yêu cầu phục hồi — sẽ có thông báo khi file sẵn sàng',
+          message: data.message || 'Restore requested — you\'ll be notified when the file is ready',
         })
       } catch (error) {
         console.error('handleRestore error:', error)
-        this.$q.notify({ icon: 'eva-alert-circle-outline', type: 'negative', message: 'Yêu cầu phục hồi thất bại' })
+        this.$q.notify({ icon: 'eva-alert-circle-outline', type: 'negative', message: 'Restore request failed' })
       } finally {
         this.restoringId = null
       }
@@ -264,10 +264,10 @@ export default {
       if (!this.fileToDelete) return
       try {
         await this.deleteFile(this.fileToDelete._id)
-        this.$q.notify({ icon: 'eva-alert-circle-outline', type: 'positive', message: 'Đã chuyển vào thùng rác' })
+        this.$q.notify({ icon: 'eva-alert-circle-outline', type: 'positive', message: 'Moved to trash' })
       } catch (error) {
         console.error('handleDeleteConfirmed error:', error)
-        this.$q.notify({ icon: 'eva-alert-circle-outline', type: 'negative', message: 'Xoá thất bại, thử lại sau' })
+        this.$q.notify({ icon: 'eva-alert-circle-outline', type: 'negative', message: 'Failed to delete, please try again' })
       } finally {
         this.deleteDialog = false
         this.fileToDelete = null
