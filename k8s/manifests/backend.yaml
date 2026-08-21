@@ -39,8 +39,15 @@ kind: Service
 metadata:
   name: backend
   namespace: chat-app
+  annotations:
+    # this is actually a Classic ELB (in-tree cloud provider default, no
+    # aws-load-balancer-type annotation set) — its default 60s idle timeout
+    # silently kills WebSocket connections left open with no traffic (e.g. a
+    # backgrounded browser tab), which showed up to clients as a 520 through
+    # Cloudflare on the next reconnect attempt. 1h covers realistic idle gaps.
+    service.beta.kubernetes.io/aws-load-balancer-connection-idle-timeout: "3600"
 spec:
-  type: LoadBalancer # public NLB — frontend Vercel gọi vào đây, không phải ClusterIP
+  type: LoadBalancer # frontend Vercel gọi vào đây, không phải ClusterIP
   selector: { app: backend }
   ports: [{ port: 80, targetPort: 5000 }]
 ---
