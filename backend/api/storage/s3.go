@@ -29,7 +29,16 @@ func InitS3() {
 		return
 	}
 
-	S3Client = s3.NewFromConfig(cfg)
+	S3Client = s3.NewFromConfig(cfg, func(o *s3.Options) {
+		// aws-sdk-go-v2 defaults to requesting response checksum validation,
+		// which adds an x-amz-checksum-mode header to the signed request. A
+		// presigned URL is meant for an external client (the browser) that
+		// never sends that header — the signature then can't match, and S3
+		// returns SignatureDoesNotMatch on every download. WhenRequired opts
+		// back out so presigned GET/PUT URLs work for a plain browser fetch.
+		o.RequestChecksumCalculation = awssdk.RequestChecksumCalculationWhenRequired
+		o.ResponseChecksumValidation = awssdk.ResponseChecksumValidationWhenRequired
+	})
 	PresignClient = s3.NewPresignClient(S3Client)
 	BucketName = os.Getenv("AWS_S3_BUCKET")
 	log.Println("S3 storage initialized, bucket:", BucketName)
