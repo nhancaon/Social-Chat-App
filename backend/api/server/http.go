@@ -39,6 +39,7 @@ func NewHTTPServer() *fiber.App {
 	routes.SetupPostRoutes(app)
 	routes.SetupChatRoutes(app)
 	routes.SetupNotificationRoutes(app)
+	routes.SetupFileRoutes(app)
 
 	app.Get("/swagger/*", swagger.HandlerDefault)
 

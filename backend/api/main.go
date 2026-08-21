@@ -2,9 +2,11 @@ package main
 
 import (
 	"Server/database"
+	"Server/jobs"
 	"Server/kafka"
 	"Server/realtime"
 	"Server/server"
+	"Server/storage"
 	"context"
 	"flag"
 	"fmt"
@@ -41,7 +43,22 @@ func main() {
 
 	nodeID := flag.String("node_id", "", "Unique identifier for this node")
 	kafkaAddr := flag.String("kafka", "127.0.0.1:29092", "kafka address")
+	jobName := flag.String("job", "", "run a one-shot background job instead of the HTTP server (archive-scan | trash-purge | restore-poll), for use as a K8s CronJob")
 	flag.Parse()
+
+	// Job mode short-circuits before the HTTP server / chat & notification hubs
+	// start — a CronJob pod only needs Mongo (+ S3, + Kafka for restore-poll's
+	// notification), not the full always-on server.
+	if *jobName != "" {
+		database.Connect()
+		storage.InitS3()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		if err := jobs.Run(ctx, *jobName); err != nil {
+			log.Fatalf("job %s failed: %v", *jobName, err)
+		}
+		return
+	}
 
 	resolvedNodeID := *nodeID
 	if resolvedNodeID == "" {
@@ -55,6 +72,7 @@ func main() {
 
 	database.Connect()
 	database.InitRedis()
+	storage.InitS3()
 
 	if err := kafka.WaitForKafka(*kafkaAddr, 1*time.Minute); err != nil {
 		log.Fatalf("kafka not ready: %v", err)

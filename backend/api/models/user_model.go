@@ -11,6 +11,10 @@ type UserModel struct {
 	Bio       string             `json:"bio" bson:"bio"`
 	Followers []string           `json:"followers" bson:"followers"`
 	Following []string           `json:"following" bson:"following"`
+	// StorageUsedBytes/StorageQuotaBytes back the file-storage feature. A zero StorageQuotaBytes
+	// means "no explicit quota set" — callers fall back to DefaultStorageQuotaBytes.
+	StorageUsedBytes  int64 `json:"storageUsedBytes" bson:"storageUsedBytes"`
+	StorageQuotaBytes int64 `json:"storageQuotaBytes" bson:"storageQuotaBytes"`
 }
 
 // interfaces
