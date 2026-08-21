@@ -23,6 +23,13 @@ spec:
             - { name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP, value: "PLAINTEXT:PLAINTEXT,CONTROLLER:PLAINTEXT" }
             - { name: KAFKA_INTER_BROKER_LISTENER_NAME, value: "PLAINTEXT" }
             - { name: CLUSTER_ID, value: "5L6g3nShT-eMctk--x86sw" }
+            # single-broker cluster — Kafka's own default (3) for the internal
+            # __consumer_offsets topic can never be satisfied with 1 broker, so
+            # it silently fails to ever get created, and every consumer group
+            # (chat/notification/heartbeat) permanently gets "Group Coordinator
+            # Not Available". App topics already set ReplicationFactor:1
+            # explicitly (kafka/manager.go) — only this internal one was missing.
+            - { name: KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR, value: "1" }
           resources:
             requests: { cpu: 250m, memory: 512Mi }
             limits: { cpu: 500m, memory: 1Gi }
