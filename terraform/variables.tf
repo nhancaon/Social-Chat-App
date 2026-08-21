@@ -67,6 +67,16 @@ variable "node_max_size" {
   default = 3
 }
 
+variable "file_upload_cors_origins" {
+  description = "Origins allowed to PUT/GET directly against the files S3 bucket via presigned URLs — enforced by the bucket's CORS config, not the backend, since the browser talks to S3 directly"
+  type        = list(string)
+  default = [
+    "http://localhost:8080",
+    "https://ncnhan.uk",
+    "https://www.ncnhan.uk",
+  ]
+}
+
 variable "tags" {
   description = "Tags applied to every resource this config creates"
   type        = map(string)
