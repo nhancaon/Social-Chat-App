@@ -69,6 +69,39 @@ spec:
 apiVersion: batch/v1
 kind: CronJob
 metadata:
+  name: file-abandoned-upload-purge
+  namespace: chat-app
+spec:
+  # daily 03:15 — removes upload-url records that never got confirmed (e.g. the
+  # client's S3 PUT failed). Small project scale, so once a day is plenty.
+  schedule: "15 3 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: abandoned-upload-purge
+              image: nhancaon/go-appchat-api:latest
+              command: ["./main"]
+              args: ["-job=abandoned-upload-purge"]
+              env:
+                - name: MONGODB_URI
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: mongodb-uri } }
+                - { name: AWS_REGION, value: "ap-southeast-1" }
+                - name: AWS_S3_BUCKET
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-s3-bucket } }
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-access-key-id } }
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom: { secretKeyRef: { name: backend-secrets, key: aws-secret-access-key } }
+                - { name: ABANDONED_UPLOAD_AFTER_HOURS, value: "1" }
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
   name: file-restore-poll
   namespace: chat-app
 spec:
