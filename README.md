@@ -2,7 +2,7 @@
 
 [![Build](https://img.shields.io/badge/build-unknown-lightgrey)]() [![Version](https://img.shields.io/badge/version-0.1.0-blue)]() [![License](https://img.shields.io/badge/license-please%20specify-red)]()
 
-Social Chat App is a lightweight social networking platform built with Go, Vue 3, MongoDB, Redis, and Kafka. It supports user authentication, post creation, likes/comments, follow relationships, and real-time chat/notifications delivered over WebSocket, fanned out across nodes via Kafka.
+Social Chat App is a full-stack social networking platform built with Go, Vue 3, MongoDB, Redis, Kafka, and AWS S3. It supports user authentication, post creation, likes/comments, follow relationships, real-time chat/notifications delivered over WebSocket and fanned out across nodes via Kafka, and a file storage feature with automatic cold-storage archival (S3 → Glacier) to cut long-term storage cost.
 
 ## Table of Contents
 
@@ -38,6 +38,7 @@ Social Chat App is a lightweight social networking platform built with Go, Vue 3
 - Real-time notifications for likes, comments, and follow events, same Kafka fan-out
 - Multi-node aware: node ID + heartbeat/leader-election over Kafka, so multiple backend instances stay in sync
 - Redis-backed caching (works with either a self-hosted Redis or a TLS managed provider like Upstash)
+- File storage with S3 presigned upload/download (the backend never proxies file bytes), automatic archival to Glacier after 90 days of inactivity, on-demand restore with a realtime "file ready" notification, per-user storage quota, and trash with a 30-day recovery window before permanent deletion
 - REST API with Swagger documentation
 - Dockerized setup for local deployment, plus a Terraform + Kubernetes path for an AWS EKS lab deployment
 
@@ -50,8 +51,9 @@ Social Chat App is a lightweight social networking platform built with Go, Vue 3
 | Real-time | WebSocket, Kafka (`segmentio/kafka-go`) for cross-node fan-out |
 | Database | MongoDB |
 | Cache | Redis (`go-redis/v9`, optional TLS for managed providers) |
+| File storage | AWS S3 (presigned URLs) + S3 Glacier (archival/restore), `aws-sdk-go-v2` |
 | Testing | Cypress, Go test, Testify |
-| DevOps | Docker, Docker Compose, Terraform, Kubernetes (Helm, Rancher, ArgoCD) |
+| DevOps | Docker, Docker Compose, Terraform, Kubernetes (Helm, Rancher, ArgoCD), Kubernetes CronJobs for archival/trash/restore |
 
 > **Why Kafka instead of gRPC:** chat/notifications used to be separate
 > microservices (`realtimeChat`, `realtimeNotification`) talking to
@@ -66,9 +68,23 @@ Social Chat App is a lightweight social networking platform built with Go, Vue 3
 > needs to know the others exist. This is what lets the backend scale via
 > the Kubernetes HPA (see `k8s/`) without any peer-discovery logic.
 
+> **Why tiered file storage:** most files get accessed heavily right after
+> upload, then almost never again — but leaving everything in "hot" S3
+> Standard storage forever means paying full price per GB for data nobody
+> reads anymore. A daily `file-archive-scan` CronJob moves files idle 90+
+> days to S3 Glacier, cutting per-GB storage cost by ~80%. The archive
+> direction leans on AWS's own Lifecycle Policy (declared in
+> `terraform/s3.tf`) where possible; the restore direction genuinely needs
+> custom orchestration, since S3 never pushes a "restore complete" event —
+> a `file-restore-poll` CronJob polls for it and, once ready, publishes to
+> the same Kafka `notifications` topic chat/likes/comments already use, so
+> the "file ready" push reaches the user over the existing WebSocket path
+> instead of a bolted-on delivery mechanism.
+
 ## 📁 Project Structure
 
 ```text
+CLAUDE.md                # Context for AI coding agents working in this repo — conventions + real gotchas
 backend/
   api/                   # The backend service — REST API, WebSocket chat/notifications, Kafka fan-out
     kafka/                # Kafka producer/consumer, notification wire types, node heartbeat/leader election
@@ -78,10 +94,15 @@ backend/
     middleware/               # Auth (HTTP + WebSocket) middleware
     validation/                 # Request body validation
     database/                    # MongoDB + Redis clients
+    storage/                      # S3 client, presigned URL helpers, Glacier archive/restore calls
+    jobs/                          # One-shot background jobs (-job=<name> flag): archive-scan,
+                                    # trash-purge, restore-poll, abandoned-upload-purge — run as K8s CronJobs
   docker-compose.yml      # Kafka (KRaft, multi-broker) + Redis, for native `go run main.go` local dev
-frontend/                # Vue 3 frontend application
-terraform/              # Provisions the AWS EKS lab cluster + Rancher host (see terraform/03-aws-eks.md)
-k8s/                    # Helm values + manifests + step-by-step guides for Rancher/ArgoCD/EKS deployment
+frontend/                # Vue 3 frontend application (My Files page: src/views/MyFiles.vue)
+terraform/              # Provisions AWS EKS + VPC + S3 file-storage bucket + IAM (see terraform/03-aws-eks.md);
+                        # terraform/rancher-host/ is a separate module for a persistent Rancher EC2 instance
+k8s/                    # Helm values + manifests (incl. file-jobs.yaml CronJobs) + step-by-step guides for
+                        # Rancher/ArgoCD/EKS deployment and teardown
 docker-compose.yml      # MongoDB + Redis + backend + frontend containers, for a full local stack
 mongo.env.example      # MongoDB environment variables for Docker
 ```
@@ -140,6 +161,10 @@ REDIS_ADDR=localhost:6379
 REDIS_PASSWORD=
 # set to true when REDIS_ADDR points at a provider reached over TLS (e.g. Upstash)
 REDIS_TLS=false
+# file storage (S3) — credentials come from the default AWS credential chain
+# (env vars / IAM role), not from this file. Only region + bucket are app config.
+AWS_REGION=ap-southeast-1
+AWS_S3_BUCKET=changeme
 ```
 
 The Kafka broker address is passed as a CLI flag, not an env var: `go run main.go --kafka=<host:port>` (defaults to `127.0.0.1:29092`, matching `backend/docker-compose.yml`).
@@ -197,6 +222,12 @@ The backend exposes REST endpoints for authentication, users, posts, chat, and n
 | GET | `/notification/:userid` | Get notifications for a user |
 | GET | `/notification/mark-notification-asreaded` | Mark a notification as read |
 | GET | `/notification/ws` | WebSocket upgrade for real-time notifications |
+| POST | `/files/upload-url` | Request a presigned S3 upload URL (client uploads directly to S3) |
+| POST | `/files/:id/confirm` | Confirm an upload finished, credit it against the user's quota |
+| GET | `/files` | List the current user's files |
+| GET | `/files/:id/download-url` | Request a presigned S3 download URL (409 if archived to Glacier) |
+| POST | `/files/:id/restore` | Request restoring an archived (Glacier) file |
+| DELETE | `/files/:id` | Move a file to trash (soft delete) |
 
 ## 🧪 Testing
 
@@ -220,7 +251,7 @@ npm run cy:run:auth
 Two paths, depending on the goal:
 
 - **Docker Compose** — quick local run, see [Running the Project](#running-the-project) above. For production, update secrets/credentials such as `JWT_SECRET` and MongoDB/Redis authentication values before deploying.
-- **AWS EKS lab** — a cost-optimized, spin-up/tear-down Kubernetes deployment managed with Rancher (persistent EC2 host) + ArgoCD (local), self-hosted Kafka, and Redis (self-hosted or Upstash). Cluster provisioning is Terraform-based. Start at `k8s/01-local-management.md`, then `terraform/02-rancher-host.md`, then `terraform/03-aws-eks.md`; `k8s/04-connect-and-deploy.md` covers wiring them all together.
+- **AWS EKS lab** — a cost-optimized, spin-up/tear-down Kubernetes deployment managed with Rancher (persistent EC2 host) + ArgoCD (local), self-hosted Kafka, and Redis (self-hosted or Upstash), plus an S3 bucket for file storage. Cluster provisioning is Terraform-based. Start at `k8s/01-local-management.md`, then `terraform/02-rancher-host.md`, then `terraform/03-aws-eks.md`; `k8s/04-connect-and-deploy.md` covers wiring them all together (including the S3 bucket and file-storage CronJobs) and, at the end, how to tear everything down cleanly to stop billing.
 
 ## 🤝 Contributing
 
@@ -230,6 +261,12 @@ Contributions are welcome.
 2. Create a new feature branch
 3. Commit your changes
 4. Open a pull request
+
+If you're working in this repo with an AI coding agent (Claude Code or
+similar), read [`CLAUDE.md`](CLAUDE.md) first — it captures conventions and
+real gotchas (Kafka replication factor, ArgoCD self-heal vs. manual
+`kubectl` changes, presigned URL signing, etc.) so the agent doesn't have to
+rediscover them.
 
 ## 📄 License
 

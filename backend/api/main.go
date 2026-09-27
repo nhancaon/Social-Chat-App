@@ -10,7 +10,9 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"io"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
@@ -35,6 +37,27 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Println("No .env file found, using system environment variables instead")
 	}
+
+	// JSON logging to stdout + file: keeps console output for local dev while
+	// giving Vector a file to tail and ship to Elasticsearch. All existing
+	// log.Printf/Println/Fatalf calls are routed through the same JSON
+	// handler via log.SetOutput, so they don't need to be rewritten — they
+	// just all land at INFO level since the stdlib log package has no
+	// concept of levels.
+	logPath := os.Getenv("LOG_FILE_PATH")
+	if logPath == "" {
+		logPath = "app.log"
+	}
+	logFile, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		log.Fatalf("failed to open log file %s: %v", logPath, err)
+	}
+	defer logFile.Close()
+
+	jsonHandler := slog.NewJSONHandler(io.MultiWriter(os.Stdout, logFile), nil)
+	slog.SetDefault(slog.New(jsonHandler))
+	log.SetFlags(0)
+	log.SetOutput(slog.NewLogLogger(jsonHandler, slog.LevelInfo).Writer())
 
 	port := os.Getenv("PORT")
 	if port == "" {

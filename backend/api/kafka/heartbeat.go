@@ -302,7 +302,7 @@ func (hm *HeartbeatManager) HandleDeadNode(nodeID string) {
 	hm.processedDeadNodes[nodeID] = true
 	hm.mu.Unlock()
 
-	if len(userIDs) == 0 {
+	if len(userIDs) == 0 {	
 		log.Printf("Dead node %s had no users", nodeID)
 		return
 	}

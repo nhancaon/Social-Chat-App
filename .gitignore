@@ -32,6 +32,7 @@ go.work.sum
 .env
 
 # Log files
+backend/api/app.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
