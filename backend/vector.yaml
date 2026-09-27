@@ -1,0 +1,36 @@
+sources:
+  backend_logs:
+    type: docker_logs
+    include_containers:
+      - backend-1
+      - backend-2
+
+transforms:
+  parse_json:
+    type: remap
+    inputs:
+      - backend_logs
+    source: |
+      parsed, err = parse_json(.message)
+      if err == null {
+        . = merge!(., parsed)
+      }
+      del(.message)
+      del(.label)
+
+sinks:
+  elasticsearch:
+    type: elasticsearch
+    inputs:
+      - parse_json
+    endpoints:
+      - https://es01:9200
+    auth:
+      strategy: basic
+      user: elastic
+      password: "${ELASTIC_PASSWORD}"
+    tls:
+      ca_file: /certs-source/certs/http_ca.crt
+    mode: bulk
+    bulk:
+      index: "backend-logs-%Y.%m.%d"
