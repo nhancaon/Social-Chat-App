@@ -3,6 +3,7 @@ package realtime
 import (
 	"Server/database"
 	"Server/kafka"
+	"Server/metrics"
 	"Server/models"
 	"context"
 	"fmt"
@@ -71,6 +72,7 @@ func (h *ChatHub) RegisterClient(userID string, conn *websocket.Conn) *Client {
 	}
 
 	h.clients[userID] = client
+	metrics.WSConnectionsActive.Inc()
 
 	status := kafka.UserStatus{
 		UserID:    userID,
@@ -146,6 +148,7 @@ func (h *ChatHub) UnregisterClient(userID string) {
 		client.mu.Unlock()
 
 		delete(h.clients, userID)
+		metrics.WSConnectionsActive.Dec()
 
 		status := kafka.UserStatus{
 			UserID:    userID,
@@ -237,8 +240,10 @@ func (h *ChatHub) DeliverMessage(msg *kafka.Message) {
 			select {
 			case recipient.Send <- response:
 				log.Printf("Message Deliverd to %s", msg.ToUserID)
+				metrics.ChatMessagesDelivered.Inc()
 			default:
 				log.Printf("Send Channel full for user %s", msg.ToUserID)
+				metrics.ChatMessagesDropped.Inc()
 			}
 		}
 		recipient.mu.Unlock()

@@ -1,0 +1,88 @@
+{
+  "title": "Social Chat App",
+  "uid": "social-chat-app",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-15m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "HTTP request rate by route",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "sum by (route) (rate(http_requests_total[1m]))",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "HTTP p95 latency",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+      "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{route}}"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Active WebSocket connections (this node)",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 6, "w": 6, "x": 0, "y": 8 },
+      "targets": [{ "expr": "chat_ws_connections_active" }]
+    },
+    {
+      "id": 4,
+      "title": "Cache hit ratio",
+      "type": "stat",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 6, "w": 6, "x": 6, "y": 8 },
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] },
+      "targets": [
+        {
+          "expr": "sum(rate(cache_hits_total[5m])) / clamp_min(sum(rate(cache_hits_total[5m])) + sum(rate(cache_misses_total[5m])), 1)"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Chat messages delivered vs dropped",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 8 },
+      "targets": [
+        { "expr": "rate(chat_messages_delivered_total[1m])", "legendFormat": "delivered" },
+        { "expr": "rate(chat_messages_dropped_total[1m])", "legendFormat": "dropped (channel full)" }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Kafka publish retries / failures",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 14 },
+      "targets": [
+        { "expr": "rate(kafka_publish_retries_total[1m])", "legendFormat": "retries" },
+        { "expr": "rate(kafka_publish_failures_total[1m])", "legendFormat": "failures" }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Goroutines",
+      "type": "timeseries",
+      "datasource": "Prometheus",
+      "gridPos": { "h": 6, "w": 12, "x": 12, "y": 14 },
+      "targets": [{ "expr": "go_goroutines" }]
+    }
+  ]
+}

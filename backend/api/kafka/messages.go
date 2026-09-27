@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"Server/metrics"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -138,8 +139,10 @@ func (mm *MessageManager) SendMessageWithRetry(msg *Message, maxRetries int) err
 			return nil
 		}
 		log.Printf("Retry %d faild for message: %v", i+1, err)
+		metrics.KafkaPublishRetries.Inc()
 		time.Sleep(time.Duration(i+1) * 100 * time.Millisecond)
 	}
+	metrics.KafkaPublishFailures.Inc()
 	return fmt.Errorf("faild to send message after %d retries", maxRetries)
 }
 

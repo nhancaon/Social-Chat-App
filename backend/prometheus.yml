@@ -1,0 +1,10 @@
+global:
+  scrape_interval: 5s
+
+scrape_configs:
+  - job_name: backend
+    static_configs:
+      # host.docker.internal resolves to the Windows/Mac Docker Desktop host,
+      # where `go run main.go` (see CLAUDE.md's local dev stack) is listening
+      # on :5000. Add more targets here if running multiple node instances.
+      - targets: ["host.docker.internal:5000"]

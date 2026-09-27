@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"Server/database"
+	"Server/metrics"
 	"Server/models"
 	"context"
 	"encoding/json"
@@ -54,6 +55,7 @@ func GetUserByID(c *fiber.Ctx) error {
 	if err == nil {
 		var cachedRes models.CachedGetUserResponse
 		if err := json.Unmarshal([]byte(cachedData), &cachedRes); err == nil {
+			metrics.CacheHits.WithLabelValues("user_profile").Inc()
 			return c.Status(fiber.StatusOK).JSON(fiber.Map{
 				"user":          cachedRes.User,
 				"posts":         cachedRes.Posts,
@@ -65,6 +67,7 @@ func GetUserByID(c *fiber.Ctx) error {
 	} else {
 		log.Printf("Cache miss for user profile %s: %s", c.Params("id"), err)
 	}
+	metrics.CacheMisses.WithLabelValues("user_profile").Inc()
 
 	const LIMIT = 3
 

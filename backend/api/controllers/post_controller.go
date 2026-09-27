@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"Server/database"
+	"Server/metrics"
 	"Server/models"
 	"context"
 	"encoding/json"
@@ -336,6 +337,7 @@ func GetAllPosts(c *fiber.Ctx) error {
 	if cachedData, err := database.RedisClient.Get(ctx, cacheKey).Result(); err == nil {
 		var cachedRes models.CachedGetAllPostResponse
 		if err := json.Unmarshal([]byte(cachedData), &cachedRes); err == nil {
+			metrics.CacheHits.WithLabelValues("posts_feed").Inc()
 			return c.Status(fiber.StatusOK).JSON(fiber.Map{
 				"data":          cachedRes.Data,
 				"currentPage":   cachedRes.CurrentPage,
@@ -344,6 +346,7 @@ func GetAllPosts(c *fiber.Ctx) error {
 			})
 		}
 	}
+	metrics.CacheMisses.WithLabelValues("posts_feed").Inc()
 
 	if err := userSchema.FindOne(ctx, bson.M{"_id": MainUserid}).Decode(&user); err != nil {
 		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
